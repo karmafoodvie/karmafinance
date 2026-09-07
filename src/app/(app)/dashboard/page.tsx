@@ -1,7 +1,9 @@
 import { buildDashboardData } from "@/lib/dashboard";
 import { formatEur } from "@/lib/calculations";
+import { QUICK_LINKS } from "@/lib/constants";
 import { StatTile } from "@/components/ui/StatTile";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { QuickLinks } from "@/components/ui/QuickLinks";
 import { RevenueTrendChart } from "@/components/charts/RevenueTrendChart";
 import { StreamComparisonChart } from "@/components/charts/StreamComparisonChart";
 import { LocationBarChart } from "@/components/charts/LocationBarChart";
@@ -20,6 +22,14 @@ export default async function DashboardPage() {
           Gesamtüberblick — aktueller Monat: {currentMonthLabel}
         </p>
       </div>
+
+      <Card className="mb-6">
+        <CardHeader
+          title="Schnellzugriffe"
+          subtitle="Direkt zu den Portalen, aus denen die Zahlen kommen"
+        />
+        <QuickLinks links={QUICK_LINKS} />
+      </Card>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <StatTile

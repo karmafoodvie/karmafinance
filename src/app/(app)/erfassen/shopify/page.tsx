@@ -1,7 +1,10 @@
-import { periodStart, monthLabel } from "@/lib/constants";
+import { periodStart, monthLabel, QUICK_LINKS } from "@/lib/constants";
 import { getShopifyMonthly } from "@/lib/data";
 import { PeriodPicker } from "@/components/erfassen/PeriodPicker";
 import { ShopifyMonthlyForm } from "@/components/erfassen/ShopifyMonthlyForm";
+import { QuickLinks } from "@/components/ui/QuickLinks";
+
+const links = QUICK_LINKS.filter((l) => l.key === "shopify");
 
 export default async function ShopifyPage({
   searchParams,
@@ -30,6 +33,10 @@ export default async function ShopifyPage({
           </p>
         </div>
         <PeriodPicker year={year} month={month} />
+      </div>
+
+      <div className="mb-6">
+        <QuickLinks links={links} />
       </div>
 
       <ShopifyMonthlyForm

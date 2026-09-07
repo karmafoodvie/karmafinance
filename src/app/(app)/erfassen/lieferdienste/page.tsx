@@ -1,4 +1,9 @@
-import { ACTIVE_LOCATIONS, periodStart, monthLabel } from "@/lib/constants";
+import {
+  ACTIVE_LOCATIONS,
+  periodStart,
+  monthLabel,
+  QUICK_LINKS,
+} from "@/lib/constants";
 import {
   getWoltPayoutsForPeriod,
   getFoodoraMonthly,
@@ -7,6 +12,9 @@ import {
 import { PeriodPicker } from "@/components/erfassen/PeriodPicker";
 import { WoltForm } from "@/components/erfassen/WoltForm";
 import { FoodoraForm } from "@/components/erfassen/FoodoraForm";
+import { QuickLinks } from "@/components/ui/QuickLinks";
+
+const links = QUICK_LINKS.filter((l) => l.key === "wolt" || l.key === "foodora");
 
 export default async function LieferdienstePage({
   searchParams,
@@ -45,6 +53,10 @@ export default async function LieferdienstePage({
           </p>
         </div>
         <PeriodPicker year={year} month={month} />
+      </div>
+
+      <div className="mb-6">
+        <QuickLinks links={links} />
       </div>
 
       <div className="flex flex-col gap-4">

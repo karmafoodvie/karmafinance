@@ -101,3 +101,49 @@ export const SELECTABLE_YEARS = Array.from(
   { length: 6 },
   (_, i) => CURRENT_YEAR - 3 + i,
 );
+
+// Direktlinks zu den Portalen, aus denen die Zahlen kommen (aus der
+// alten Excel übernommen). Rein zur Bequemlichkeit beim manuellen
+// Eintragen — keine Automatisierung, nur ein Klick statt Suchen.
+export interface QuickLink {
+  key: string;
+  label: string;
+  url: string;
+}
+
+export const QUICK_LINKS: QuickLink[] = [
+  {
+    key: "shopify",
+    label: "Shopify Finance",
+    url: "https://admin.shopify.com/store/karmafood/finance",
+  },
+  {
+    key: "wolt",
+    label: "Wolt Payout-Reports",
+    url: "https://merchant.wolt.com/experience/merchant/66a381394547992aac511931/s/66a381394547992aac511931/payout-reports",
+  },
+  {
+    key: "foodora",
+    label: "Foodora Finance",
+    url: "https://partner.foodora.com/finance",
+  },
+  {
+    key: "tgtg",
+    label: "Too Good To Go — Sales",
+    url: "https://store.toogoodtogo.com/chains/2856/sales",
+  },
+  {
+    key: "stadtgemeinde",
+    label: "Stadtgemeinde (Sheet)",
+    url: "https://docs.google.com/spreadsheets/d/1AgAhS-2u39X5-sP3J8jpxYAJ1GWkjH6-8Q4B2GgBS5o/edit?usp=sharing",
+  },
+  {
+    key: "schrankerl",
+    label: "Schrankerl (Sheet)",
+    url: "https://docs.google.com/spreadsheets/d/1o5cELMr2_U8ywXtnLTDx04DnWlyIK5nQMwjZtRkj4uU/edit?usp=sharing",
+  },
+];
+
+export function quickLink(key: string): QuickLink | undefined {
+  return QUICK_LINKS.find((l) => l.key === key);
+}
