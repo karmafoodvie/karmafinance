@@ -47,7 +47,12 @@ export default function MfaSetupPage() {
         return;
       }
 
-      setQrCode(data.totp.qr_code);
+      // Supabase liefert den QR-Code als data:-URI
+      // ("data:image/svg+xml;utf-8,<svg>...") statt als reines SVG-Markup.
+      // Für dangerouslySetInnerHTML brauchen wir nur den Teil ab dem <svg>-Tag.
+      const rawQrCode = data.totp.qr_code;
+      const svgStart = rawQrCode.indexOf("<svg");
+      setQrCode(svgStart >= 0 ? rawQrCode.slice(svgStart) : rawQrCode);
       setSecret(data.totp.secret);
       setFactorId(data.id);
       setLoading(false);
