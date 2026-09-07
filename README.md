@@ -81,6 +81,27 @@ mitgeteilt — bitte gleich nach dem ersten Login ändern (Supabase
 Dashboard → Authentication → User → Reset Password, oder eine
 Passwort-vergessen-Seite ergänzen, die gibt's im MVP noch nicht).
 
+### Zwei-Faktor-Login (Pflicht)
+
+Passwort allein reicht nicht — jeder Account braucht zusätzlich einen
+TOTP-Code aus einer Authenticator-App (Google Authenticator, Authy,
+1Password, …). Läuft komplett über die kostenlose TOTP-MFA-API von
+Supabase Auth, kein zusätzlicher Dienst nötig.
+
+- Beim allerersten Login nach dem Passwort landet man automatisch auf
+  `/mfa-setup`: QR-Code scannen, 6-stelligen Code eingeben, fertig.
+  Erst danach kommt man auf `/dashboard`.
+- Bei jedem weiteren Login (neue Session/neues Gerät) fragt
+  `/mfa-challenge` nur noch den Code ab, kein neuer QR-Code.
+- Durchgesetzt in `src/lib/supabase/middleware.ts` über
+  `supabase.auth.mfa.getAuthenticatorAssuranceLevel()` — ohne
+  verifizierten Faktor (aal2) kommt niemand auf geschützte Seiten,
+  egal welche Rolle.
+- Verliert jemand sein Gerät: in der Supabase-Dashboard-UI unter
+  Authentication → Users → den User öffnen → dort lässt sich der
+  MFA-Faktor löschen, danach durchläuft der Account beim nächsten
+  Login automatisch wieder `/mfa-setup`.
+
 ## Wöchentliche Erfassung (später)
 
 Die Tabellen haben schon eine `period_type`-Spalte (`monthly` | `weekly`)
