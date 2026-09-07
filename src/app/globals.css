@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------
+   Karma Food Finanzübersicht — Design Tokens
+   Neongelb, Orange, Dark Ink, Cream sind die vorgegebenen CI-Werte.
+   Die exakten Hex-Codes für "Dark Ink" und "Cream" waren nicht
+   spezifiziert — hier sind sinnvolle Defaults gesetzt. Falls ihr
+   die offiziellen Werte aus dem Brand-Guide habt, einfach unten
+   ersetzen (einzige Stelle im ganzen Projekt).
+   ----------------------------------------------------------------*/
+:root {
+  --color-neon: #d4ff3f;
+  --color-orange: #e94e1b;
+  --color-ink: #1b1b14;
+  --color-ink-soft: #2a2a20;
+  --color-cream: #faf6ea;
+  --color-cream-soft: #f1ead6;
+
+  --background: var(--color-cream);
+  --foreground: var(--color-ink);
+}
+
+@theme inline {
+  --color-neon: var(--color-neon);
+  --color-orange: var(--color-orange);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-cream: var(--color-cream);
+  --color-cream-soft: var(--color-cream-soft);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-heading: "Boldonse", system-ui, sans-serif;
+  --font-body: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: var(--color-neon);
+  color: var(--color-ink);
+}
+
+* {
+  scrollbar-color: var(--color-ink-soft) transparent;
+}
