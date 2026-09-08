@@ -72,6 +72,15 @@ export const LOCATIONS: LocationDef[] = [
 
 export const ACTIVE_LOCATIONS = LOCATIONS.filter((l) => l.active);
 
+// Standorte, für die TGTG jemals Umsatz hatte (inkl. Neustiftgasse — dort lief
+// TGTG noch bis Juni 2026 weiter, obwohl der Standort für Shops/Lieferdienste
+// schon als historisch gilt). Stadtplatz & Inkustraße hatten nie TGTG.
+export const TGTG_LOCATIONS = LOCATIONS.filter((l) =>
+  (["boerse-1010", "lb-1010", "ausstellungsstrasse-1020", "neustiftgasse-1070"] as LocationCode[]).includes(
+    l.code,
+  ),
+);
+
 export const MONTH_NAMES = [
   "Jänner",
   "Februar",
@@ -131,7 +140,7 @@ export const QUICK_LINKS: QuickLink[] = [
   },
   {
     key: "tgtg",
-    label: "Too Good To Go — Sales",
+    label: "Too Good To Go — Finanzen (→ Monatliche Abrechnungsdokumente)",
     url: "https://store.toogoodtogo.com/chains/2856/sales",
   },
   {
