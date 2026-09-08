@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { formatPercent } from "@/lib/calculations";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 
 export function YoyBadge({ value }: { value: number | null }) {
   if (value == null) {
@@ -27,16 +28,19 @@ export function StatTile({
   value,
   sub,
   yoy,
+  info,
 }: {
   label: string;
   value: string;
   sub?: string;
   yoy?: number | null;
+  info?: string;
 }) {
   return (
     <div className="rounded-2xl border border-ink/10 bg-white/70 p-4 flex flex-col gap-2">
-      <span className="text-xs font-medium uppercase tracking-wide text-ink/45">
+      <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink/45">
         {label}
+        {info && <InfoTooltip text={info} />}
       </span>
       <span className="font-heading text-2xl leading-none">{value}</span>
       <div className="flex items-center justify-between min-h-[20px]">
