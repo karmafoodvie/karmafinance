@@ -93,3 +93,30 @@ export interface TgtgLocationPayout {
   updated_by: string | null;
   updated_at: string;
 }
+
+// Unregelmäßige, projektbezogene Umsätze abseits der fixen 6 Lunch-Locations
+// (Pop-ups, Kooperationen, Events — z.B. VDW am Standort IST). Freitext
+// project_name statt fixer location_code-Liste.
+export interface ProjectRevenue {
+  id: string;
+  project_name: string;
+  period_start: string;
+  period_type: "monthly" | "weekly";
+  revenue_net: number | null;
+  note: string | null;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+// Freie, datierte Notizen/Ereignisse mit Hashtags — Kontext zu
+// Umsatzschwankungen (z.B. "neues Menü", "Schanigarten entfernt").
+export interface BusinessEvent {
+  id: string;
+  event_date: string; // YYYY-MM-DD
+  location_code: string | null; // null = allgemein/unternehmensweit
+  title: string;
+  note: string | null;
+  tags: string[];
+  created_by: string | null;
+  updated_at: string;
+}

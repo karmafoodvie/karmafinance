@@ -7,6 +7,8 @@ import type {
   FoodoraMonthly,
   FoodoraLocationPayout,
   TgtgLocationPayout,
+  ProjectRevenue,
+  BusinessEvent,
 } from "@/lib/supabase/types";
 
 export async function getLocations(): Promise<LocationRow[]> {
@@ -189,4 +191,84 @@ export async function getTgtgSeries(fromPeriod: string): Promise<TgtgLocationPay
     .order("period_start");
   if (error) throw error;
   return data;
+}
+
+// Projekte & Pop-ups — freie, unregelmäßige Umsätze (z.B. VDW-Pop-up am
+// Standort IST). Absichtlich ohne fromPeriod-Filter: es sind wenige,
+// unregelmäßige Einträge, da lohnt sich kein Zeitraum-Ausschnitt.
+export async function getProjectRevenue(): Promise<ProjectRevenue[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("project_revenue")
+    .select("*")
+    .order("period_start", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function saveProjectRevenueRow(input: {
+  projectName: string;
+  periodStart: string;
+  revenueNet: number | null;
+  note: string | null;
+}) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("project_revenue").upsert(
+    {
+      project_name: input.projectName,
+      period_start: input.periodStart,
+      period_type: "monthly" as const,
+      revenue_net: input.revenueNet,
+      note: input.note,
+    },
+    { onConflict: "project_name,period_start,period_type" },
+  );
+  if (error) throw error;
+}
+
+export async function deleteProjectRevenueRow(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("project_revenue").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// Ereignisse/Notizen — Kontext zu Umsatzschwankungen. Standardmäßig die
+// letzten 200 Einträge, neueste zuerst; für diese App mehr als genug.
+export async function getBusinessEvents(): Promise<BusinessEvent[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("business_events")
+    .select("*")
+    .order("event_date", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return data;
+}
+
+export async function saveBusinessEvent(input: {
+  eventDate: string;
+  locationCode: string | null;
+  title: string;
+  note: string | null;
+  tags: string[];
+}) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase.from("business_events").insert({
+    event_date: input.eventDate,
+    location_code: input.locationCode,
+    title: input.title,
+    note: input.note,
+    tags: input.tags,
+    created_by: user?.id,
+  });
+  if (error) throw error;
+}
+
+export async function deleteBusinessEvent(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("business_events").delete().eq("id", id);
+  if (error) throw error;
 }
