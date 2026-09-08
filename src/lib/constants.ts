@@ -97,9 +97,11 @@ export function periodStart(year: number, month: number): string {
 
 export const CURRENT_YEAR = new Date().getFullYear();
 
+// Deckt die komplette importierte Shopify-Historie ab (April 2022) plus
+// etwas Puffer nach vorne.
 export const SELECTABLE_YEARS = Array.from(
-  { length: 6 },
-  (_, i) => CURRENT_YEAR - 3 + i,
+  { length: 7 },
+  (_, i) => CURRENT_YEAR - 4 + i,
 );
 
 // Direktlinks zu den Portalen, aus denen die Zahlen kommen (aus der

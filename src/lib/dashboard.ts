@@ -1,4 +1,4 @@
-import { format, subMonths } from "date-fns";
+import { format, subMonths, addMonths } from "date-fns";
 import { de } from "date-fns/locale";
 import {
   getLocationMonthlySeries,
@@ -14,6 +14,11 @@ export interface MonthBucket {
   label: string; // "Jän 26"
 }
 
+export interface DateRange {
+  from: string; // YYYY-MM-01
+  to: string; // YYYY-MM-01
+}
+
 export function last12Months(referenceDate = new Date()): MonthBucket[] {
   return Array.from({ length: 12 }, (_, i) => {
     const d = subMonths(referenceDate, 11 - i);
@@ -23,8 +28,29 @@ export function last12Months(referenceDate = new Date()): MonthBucket[] {
   });
 }
 
-export async function buildDashboardData(referenceDate = new Date()) {
-  const months = last12Months(referenceDate);
+// Baut alle Monats-"Buckets" zwischen from und to (beide inklusive). Wird
+// für den benutzerdefinierten Zeitraum im Dashboard verwendet — statt der
+// fix eingebauten "letzten 12 Monate".
+export function monthsInRange(fromPeriod: string, toPeriod: string): MonthBucket[] {
+  const start = new Date(fromPeriod);
+  const end = new Date(toPeriod);
+  const result: MonthBucket[] = [];
+  let cursor = start;
+  let guard = 0;
+  // Sicherheitslimit (50 Jahre), falls von/bis vertauscht o.ä. hereinkommen.
+  while (cursor <= end && guard < 600) {
+    result.push({
+      periodStart: format(cursor, "yyyy-MM-01"),
+      label: format(cursor, "MMM yy", { locale: de }),
+    });
+    cursor = addMonths(cursor, 1);
+    guard++;
+  }
+  return result.length > 0 ? result : last12Months(end);
+}
+
+export async function buildDashboardData(range?: DateRange) {
+  const months = range ? monthsInRange(range.from, range.to) : last12Months();
   const earliestPeriod = months[0].periodStart;
   // Für Vorjahresvergleich brauchen wir zusätzlich die 12 Monate davor.
   const earliestPrevYear = format(
