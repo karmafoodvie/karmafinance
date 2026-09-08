@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/erfassen/standorte", label: "Standorte" },
   { href: "/erfassen/shopify", label: "Shopify" },
   { href: "/erfassen/lieferdienste", label: "Lieferdienste" },
+  { href: "/erfassen/tgtg", label: "Too Good To Go" },
 ];
 
 export function Sidebar({
