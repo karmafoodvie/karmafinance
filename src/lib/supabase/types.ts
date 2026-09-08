@@ -80,3 +80,16 @@ export interface FoodoraLocationPayout {
   updated_by: string | null;
   updated_at: string;
 }
+
+export interface TgtgLocationPayout {
+  id: string;
+  location_code: string;
+  period_start: string;
+  period_type: "monthly" | "weekly";
+  meals_saved: number | null;
+  revenue_gross: number | null; // Verkaufswert der geretteten Portionen
+  fee_amount: number | null; // TGTG-Reservierungsgebühr (inkl. USt.)
+  revenue_net: number | null; // Brutto minus TGTG-Gebühr = tatsächliche Auszahlung
+  updated_by: string | null;
+  updated_at: string;
+}
