@@ -5,9 +5,10 @@ import {
   getShopifySeries,
   getWoltSeries,
   getFoodoraSeries,
+  getTgtgSeries,
 } from "@/lib/data";
 import { sum, yoyPercent } from "@/lib/calculations";
-import { ACTIVE_LOCATIONS } from "@/lib/constants";
+import { ACTIVE_LOCATIONS, TGTG_LOCATIONS } from "@/lib/constants";
 
 export interface MonthBucket {
   periodStart: string; // YYYY-MM-01
@@ -58,11 +59,12 @@ export async function buildDashboardData(range?: DateRange) {
     "yyyy-MM-01",
   );
 
-  const [locationRows, shopifyRows, woltRows, foodoraRows] = await Promise.all([
+  const [locationRows, shopifyRows, woltRows, foodoraRows, tgtgRows] = await Promise.all([
     getLocationMonthlySeries(earliestPrevYear),
     getShopifySeries(earliestPrevYear),
     getWoltSeries(earliestPrevYear),
     getFoodoraSeries(earliestPrevYear),
+    getTgtgSeries(earliestPrevYear),
   ]);
 
   function shopsTotalFor(period: string) {
@@ -98,11 +100,38 @@ export async function buildDashboardData(range?: DateRange) {
     if (wolt == null && foodora == null) return null;
     return (wolt ?? 0) + (foodora ?? 0);
   }
+  // TGTG: Netto = tatsächliche Auszahlung (Brutto minus TGTG-Reservierungsgebühr),
+  // das zählt für den Gesamtumsatz. Brutto (Verkaufswert vor Gebühr) wird separat
+  // mitgeführt, weil Gurl beides sehen will.
+  function tgtgRowsFor(period: string) {
+    return tgtgRows.filter((r) => r.period_start === period);
+  }
+  function tgtgNetTotalFor(period: string) {
+    const rows = tgtgRowsFor(period);
+    if (rows.length === 0) return null;
+    return sum(rows.map((r) => r.revenue_net));
+  }
+  function tgtgGrossTotalFor(period: string) {
+    const rows = tgtgRowsFor(period);
+    if (rows.length === 0) return null;
+    return sum(rows.map((r) => r.revenue_gross));
+  }
+  function tgtgFeeTotalFor(period: string) {
+    const rows = tgtgRowsFor(period);
+    if (rows.length === 0) return null;
+    return sum(rows.map((r) => r.fee_amount));
+  }
+  function tgtgMealsTotalFor(period: string) {
+    const rows = tgtgRowsFor(period);
+    if (rows.length === 0) return null;
+    return sum(rows.map((r) => r.meals_saved));
+  }
   function companyTotalFor(period: string) {
     return (
       shopsTotalFor(period) +
       (shopifyTotalFor(period) ?? 0) +
-      (deliveryTotalFor(period) ?? 0)
+      (deliveryTotalFor(period) ?? 0) +
+      (tgtgNetTotalFor(period) ?? 0)
     );
   }
 
@@ -116,6 +145,7 @@ export async function buildDashboardData(range?: DateRange) {
     Shops: shopsTotalFor(m.periodStart),
     Shopify: shopifyTotalFor(m.periodStart) ?? 0,
     Lieferdienste: deliveryTotalFor(m.periodStart) ?? 0,
+    TGTG: tgtgNetTotalFor(m.periodStart) ?? 0,
   }));
 
   const currentPeriod = months[months.length - 1].periodStart;
@@ -141,6 +171,11 @@ export async function buildDashboardData(range?: DateRange) {
   const prevYearDelivery = deliveryTotalFor(currentYearPrevPeriod);
   const currentDiscounts = discountsTotalFor(currentPeriod);
   const prevMonthTotal = prevMonthPeriod ? companyTotalFor(prevMonthPeriod) : null;
+  const currentTgtgNet = tgtgNetTotalFor(currentPeriod);
+  const currentTgtgGross = tgtgGrossTotalFor(currentPeriod);
+  const currentTgtgFee = tgtgFeeTotalFor(currentPeriod);
+  const currentTgtgMeals = tgtgMealsTotalFor(currentPeriod);
+  const prevYearTgtgNet = tgtgNetTotalFor(currentYearPrevPeriod);
 
   return {
     months,
@@ -157,6 +192,107 @@ export async function buildDashboardData(range?: DateRange) {
       currentDelivery,
       deliveryYoy: yoyPercent(currentDelivery, prevYearDelivery),
       currentDiscounts,
+      currentTgtgNet,
+      currentTgtgGross,
+      currentTgtgFee,
+      currentTgtgMeals,
+      tgtgYoy: yoyPercent(currentTgtgNet, prevYearTgtgNet),
+    },
+  };
+}
+
+// Eigene Auswertung nur für Too Good To Go — Entwicklung über Zeit, pro
+// Standort und mit Sackerl-Anzahl. Getrennt von buildDashboardData, weil
+// TGTG eine völlig eigene Sache ist (Lebensmittelrettung, nicht Umsatz-
+// Kanal wie Wolt/Foodora) und ihre eigene Seite mit eigenem Zeitraum hat.
+export async function buildTgtgDashboardData(range?: DateRange) {
+  const months = range ? monthsInRange(range.from, range.to) : last12Months();
+  const earliestPeriod = months[0].periodStart;
+  const earliestPrevYear = format(
+    subMonths(new Date(earliestPeriod), 12),
+    "yyyy-MM-01",
+  );
+
+  const tgtgRows = await getTgtgSeries(earliestPrevYear);
+
+  function rowsFor(period: string) {
+    return tgtgRows.filter((r) => r.period_start === period);
+  }
+  function netTotalFor(period: string) {
+    const rows = rowsFor(period);
+    if (rows.length === 0) return null;
+    return sum(rows.map((r) => r.revenue_net));
+  }
+  function grossTotalFor(period: string) {
+    const rows = rowsFor(period);
+    if (rows.length === 0) return null;
+    return sum(rows.map((r) => r.revenue_gross));
+  }
+  function feeTotalFor(period: string) {
+    const rows = rowsFor(period);
+    if (rows.length === 0) return null;
+    return sum(rows.map((r) => r.fee_amount));
+  }
+  function mealsTotalFor(period: string) {
+    const rows = rowsFor(period);
+    if (rows.length === 0) return null;
+    return sum(rows.map((r) => r.meals_saved));
+  }
+
+  const netTrend = months.map((m) => ({
+    label: m.label,
+    value: netTotalFor(m.periodStart) ?? 0,
+  }));
+
+  const mealsTrend = months.map((m) => ({
+    label: m.label,
+    value: mealsTotalFor(m.periodStart) ?? 0,
+  }));
+
+  const locationKeys = TGTG_LOCATIONS.map((l) => l.shortName);
+
+  const locationTrend = months.map((m) => {
+    const point: { label: string; [key: string]: string | number } = {
+      label: m.label,
+    };
+    for (const loc of TGTG_LOCATIONS) {
+      const row = tgtgRows.find(
+        (r) => r.location_code === loc.code && r.period_start === m.periodStart,
+      );
+      point[loc.shortName] = row?.revenue_net ?? 0;
+    }
+    return point;
+  });
+
+  const currentPeriod = months[months.length - 1].periodStart;
+  const currentYearPrevPeriod = format(
+    subMonths(new Date(currentPeriod), 12),
+    "yyyy-MM-01",
+  );
+
+  const currentNet = netTotalFor(currentPeriod);
+  const currentGross = grossTotalFor(currentPeriod);
+  const currentFee = feeTotalFor(currentPeriod);
+  const currentMeals = mealsTotalFor(currentPeriod);
+  const prevYearNet = netTotalFor(currentYearPrevPeriod);
+  const prevYearMeals = mealsTotalFor(currentYearPrevPeriod);
+
+  const hasAnyData = tgtgRows.length > 0;
+
+  return {
+    months,
+    netTrend,
+    mealsTrend,
+    locationTrend,
+    locationKeys,
+    hasAnyData,
+    kpis: {
+      currentNet,
+      netYoy: yoyPercent(currentNet, prevYearNet),
+      currentGross,
+      currentFee,
+      currentMeals,
+      mealsYoy: yoyPercent(currentMeals, prevYearMeals),
     },
   };
 }
