@@ -6,6 +6,7 @@ import type {
   WoltLocationPayout,
   FoodoraMonthly,
   FoodoraLocationPayout,
+  TgtgLocationPayout,
 } from "@/lib/supabase/types";
 
 export async function getLocations(): Promise<LocationRow[]> {
@@ -157,6 +158,31 @@ export async function getFoodoraPayoutSeries(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("foodora_location_payout")
+    .select("*")
+    .eq("period_type", "monthly")
+    .gte("period_start", fromPeriod)
+    .order("period_start");
+  if (error) throw error;
+  return data;
+}
+
+export async function getTgtgPayoutsForPeriod(
+  periodStart: string,
+): Promise<TgtgLocationPayout[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tgtg_location_payout")
+    .select("*")
+    .eq("period_start", periodStart)
+    .eq("period_type", "monthly");
+  if (error) throw error;
+  return data;
+}
+
+export async function getTgtgSeries(fromPeriod: string): Promise<TgtgLocationPayout[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tgtg_location_payout")
     .select("*")
     .eq("period_type", "monthly")
     .gte("period_start", fromPeriod)
