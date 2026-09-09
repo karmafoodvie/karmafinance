@@ -108,6 +108,20 @@ export interface ProjectRevenue {
   updated_at: string;
 }
 
+// Produktverkäufe pro Standort und Monat aus dem Odoo-POS-Export.
+// category trennt Shop / Catering / B2B / Rabattzeilen ("All").
+export interface PosProductMonthly {
+  id: string;
+  location_code: string;
+  period_start: string;
+  product_name: string;
+  category: string;
+  quantity: number | null;
+  revenue: number | null; // Gesamtpreis, brutto nach Rabatten
+  margin: number | null;
+  updated_at: string;
+}
+
 // Freie, datierte Notizen/Ereignisse mit Hashtags — Kontext zu
 // Umsatzschwankungen (z.B. "neues Menü", "Schanigarten entfernt").
 export interface BusinessEvent {

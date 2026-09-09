@@ -5,8 +5,7 @@ import { QUICK_LINKS, periodStart } from "@/lib/constants";
 import { StatTile } from "@/components/ui/StatTile";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { QuickLinks } from "@/components/ui/QuickLinks";
-import { RevenueTrendChart } from "@/components/charts/RevenueTrendChart";
-import { StreamComparisonChart } from "@/components/charts/StreamComparisonChart";
+import { CombinedRevenueChart } from "@/components/charts/CombinedRevenueChart";
 import { LocationBarChart } from "@/components/charts/LocationBarChart";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 
@@ -37,7 +36,7 @@ export default async function DashboardPage({
     [fromPeriod, toPeriod] = [toPeriod, fromPeriod];
   }
 
-  const { revenueTrend, streamComparison, locationBar, kpis, months } =
+  const { streamComparison, locationBar, kpis, months } =
     await buildDashboardData({ from: fromPeriod, to: toPeriod });
 
   const rangeStartLabel = months[0]?.label ?? "";
@@ -69,13 +68,13 @@ export default async function DashboardPage({
         <QuickLinks links={QUICK_LINKS} />
       </Card>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <StatTile
           label="Umsatz gesamt"
           value={formatEur(kpis.currentTotal)}
-          sub="Shops + Shopify + Lieferdienste"
+          sub="Shops + Shopify + Lieferdienste + TGTG + Projekte"
           yoy={kpis.totalYoy}
-          info={`Summe aus allen drei Einkommensströmen für ${rangeEndLabel} (das Ende des gewählten Zeitraums): Shops (Lunch-Locations), Shopify-Webshop und Lieferdienste (Wolt + Foodora).`}
+          info={`Summe aus allen Einkommensströmen für ${rangeEndLabel} (das Ende des gewählten Zeitraums): Shops (Lunch-Locations), Shopify-Webshop, Lieferdienste (Wolt + Foodora), Too Good To Go (netto, nach TGTG-Gebühr) und Projekte/Pop-ups.`}
         />
         <StatTile
           label="Shops"
@@ -96,38 +95,40 @@ export default async function DashboardPage({
           yoy={kpis.deliveryYoy}
           info={`Auszahlungen von Wolt und Foodora zusammen, ${rangeEndLabel}. Die Prozentsätze, die die Lieferdienste selbst einbehalten, sind hier schon abgezogen.`}
         />
+        <StatTile
+          label="Too Good To Go"
+          value={formatEur(kpis.currentTgtgNet)}
+          sub={
+            kpis.currentTgtgGross != null
+              ? `Brutto ${formatEur(kpis.currentTgtgGross)}${kpis.currentTgtgMeals != null ? ` · ${kpis.currentTgtgMeals} Sackerl` : ""}`
+              : "noch keine Daten"
+          }
+          yoy={kpis.tgtgYoy}
+          info={`Netto-Auszahlung von Too Good To Go für ${rangeEndLabel}: Verkaufswert der geretteten Überraschungssackerl${kpis.currentTgtgGross != null ? ` (Brutto ${formatEur(kpis.currentTgtgGross)})` : ""} minus TGTG-Reservierungsgebühr${kpis.currentTgtgFee != null ? ` (${formatEur(kpis.currentTgtgFee)})` : ""}. Das Netto ist das, was TGTG euch tatsächlich auszahlt.`}
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        <Card className="lg:col-span-2">
-          <CardHeader
-            title="Umsatzverlauf"
-            subtitle={
-              isSingleMonth
-                ? `${rangeEndLabel}, gesamt (alle Streams)`
-                : `${rangeStartLabel} – ${rangeEndLabel}, gesamt (alle Streams)`
-            }
-          />
-          <RevenueTrendChart data={revenueTrend} />
-        </Card>
-        <Card>
-          <CardHeader title="Standorte" subtitle={`Umsatz ${rangeEndLabel}`} />
-          {locationBar.length > 0 ? (
-            <LocationBarChart data={locationBar} />
-          ) : (
-            <p className="text-sm text-ink/40 py-10 text-center">
-              Noch keine Standort-Daten für diesen Monat.
-            </p>
-          )}
-        </Card>
-      </div>
+      <Card className="mb-4">
+        <CardHeader
+          title="Umsatz im Überblick"
+          subtitle={
+            isSingleMonth
+              ? `${rangeEndLabel} — Posten anklicken zum Ein-/Ausblenden`
+              : `${rangeStartLabel} – ${rangeEndLabel} — Posten anklicken zum Ein-/Ausblenden`
+          }
+        />
+        <CombinedRevenueChart data={streamComparison} />
+      </Card>
 
       <Card>
-        <CardHeader
-          title="Streams im Vergleich"
-          subtitle={`Shops vs. Shopify vs. Lieferdienste, pro Monat (${rangeStartLabel} – ${rangeEndLabel})`}
-        />
-        <StreamComparisonChart data={streamComparison} />
+        <CardHeader title="Standorte" subtitle={`Umsatz ${rangeEndLabel}`} />
+        {locationBar.length > 0 ? (
+          <LocationBarChart data={locationBar} />
+        ) : (
+          <p className="text-sm text-ink/40 py-10 text-center">
+            Noch keine Standort-Daten für diesen Monat.
+          </p>
+        )}
       </Card>
 
       <p className="text-xs text-ink/35 mt-6">
@@ -138,9 +139,10 @@ export default async function DashboardPage({
         Wert in der Datenbank vor.
         {" · "}
         Mit &bdquo;von–bis&ldquo; oben kannst du jeden beliebigen Zeitraum
-        anzeigen — Umsatzverlauf und Streams-Vergleich zeigen dann genau
-        diese Monate, die Kennzahlen oben beziehen sich immer auf den letzten
-        Monat des gewählten Zeitraums.
+        anzeigen — der Überblick zeigt dann genau diese Monate, die
+        Kennzahlen oben beziehen sich immer auf den letzten Monat des
+        gewählten Zeitraums. &bdquo;Vorjahr vergleichen&ldquo; blendet die
+        gestrichelte Vorjahreslinie im Chart ein.
       </p>
     </div>
   );

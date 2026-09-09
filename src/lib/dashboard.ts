@@ -6,6 +6,7 @@ import {
   getWoltSeries,
   getFoodoraSeries,
   getTgtgSeries,
+  getProjectRevenue,
 } from "@/lib/data";
 import { sum, yoyPercent } from "@/lib/calculations";
 import { ACTIVE_LOCATIONS, TGTG_LOCATIONS } from "@/lib/constants";
@@ -59,12 +60,13 @@ export async function buildDashboardData(range?: DateRange) {
     "yyyy-MM-01",
   );
 
-  const [locationRows, shopifyRows, woltRows, foodoraRows, tgtgRows] = await Promise.all([
+  const [locationRows, shopifyRows, woltRows, foodoraRows, tgtgRows, projectRows] = await Promise.all([
     getLocationMonthlySeries(earliestPrevYear),
     getShopifySeries(earliestPrevYear),
     getWoltSeries(earliestPrevYear),
     getFoodoraSeries(earliestPrevYear),
     getTgtgSeries(earliestPrevYear),
+    getProjectRevenue(),
   ]);
 
   function shopsTotalFor(period: string) {
@@ -126,12 +128,21 @@ export async function buildDashboardData(range?: DateRange) {
     if (rows.length === 0) return null;
     return sum(rows.map((r) => r.meals_saved));
   }
+  // Projekte & Pop-ups: freie Projektnamen, hier für den Gesamtumsatz nur
+  // pro Monat aufsummiert (welches Projekt es war, ist auf der eigenen
+  // Projekte-Seite nachzusehen).
+  function projectTotalFor(period: string) {
+    const rows = projectRows.filter((r) => r.period_start === period);
+    if (rows.length === 0) return null;
+    return sum(rows.map((r) => r.revenue_net));
+  }
   function companyTotalFor(period: string) {
     return (
       shopsTotalFor(period) +
       (shopifyTotalFor(period) ?? 0) +
       (deliveryTotalFor(period) ?? 0) +
-      (tgtgNetTotalFor(period) ?? 0)
+      (tgtgNetTotalFor(period) ?? 0) +
+      (projectTotalFor(period) ?? 0)
     );
   }
 
@@ -140,13 +151,26 @@ export async function buildDashboardData(range?: DateRange) {
     value: companyTotalFor(m.periodStart),
   }));
 
-  const streamComparison = months.map((m) => ({
-    label: m.label,
-    Shops: shopsTotalFor(m.periodStart),
-    Shopify: shopifyTotalFor(m.periodStart) ?? 0,
-    Lieferdienste: deliveryTotalFor(m.periodStart) ?? 0,
-    TGTG: tgtgNetTotalFor(m.periodStart) ?? 0,
-  }));
+  const streamComparison = months.map((m) => {
+    const prevYearPeriod = format(subMonths(new Date(m.periodStart), 12), "yyyy-MM-01");
+    // Vorjahr nur zeigen, wenn's für den Monat überhaupt irgendwo Daten gibt
+    // — sonst ergäbe "Gesamt 0" eine irreführende Nulllinie im Chart.
+    const hasPrevYearData =
+      locationRows.some((r) => r.period_start === prevYearPeriod) ||
+      shopifyTotalFor(prevYearPeriod) != null ||
+      deliveryTotalFor(prevYearPeriod) != null ||
+      tgtgNetTotalFor(prevYearPeriod) != null ||
+      projectTotalFor(prevYearPeriod) != null;
+    return {
+      label: m.label,
+      Shops: shopsTotalFor(m.periodStart),
+      Shopify: shopifyTotalFor(m.periodStart) ?? 0,
+      Lieferdienste: deliveryTotalFor(m.periodStart) ?? 0,
+      TGTG: tgtgNetTotalFor(m.periodStart) ?? 0,
+      Projekte: projectTotalFor(m.periodStart) ?? 0,
+      VorjahrGesamt: hasPrevYearData ? companyTotalFor(prevYearPeriod) : null,
+    };
+  });
 
   const currentPeriod = months[months.length - 1].periodStart;
   const prevMonthPeriod = months[months.length - 2]?.periodStart;
