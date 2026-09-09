@@ -42,6 +42,9 @@ export default async function DashboardPage({
   const rangeStartLabel = months[0]?.label ?? "";
   const rangeEndLabel = months[months.length - 1]?.label ?? "";
   const isSingleMonth = months.length <= 1;
+  const rangeLabel = isSingleMonth
+    ? rangeEndLabel
+    : `${rangeStartLabel} – ${rangeEndLabel}`;
 
   return (
     <div>
@@ -49,7 +52,7 @@ export default async function DashboardPage({
         <div>
           <h1 className="font-heading text-xl">Dashboard</h1>
           <p className="text-sm text-ink/50 mt-1">
-            Kennzahlen oben beziehen sich auf {rangeEndLabel}
+            Kennzahlen oben sind die Summe über {rangeLabel}
           </p>
         </div>
         <DateRangePicker
@@ -74,26 +77,26 @@ export default async function DashboardPage({
           value={formatEur(kpis.currentTotal)}
           sub="Shops + Shopify + Lieferdienste + TGTG + Projekte"
           yoy={kpis.totalYoy}
-          info={`Summe aus allen Einkommensströmen für ${rangeEndLabel} (das Ende des gewählten Zeitraums): Shops (Lunch-Locations), Shopify-Webshop, Lieferdienste (Wolt + Foodora), Too Good To Go (netto, nach TGTG-Gebühr) und Projekte/Pop-ups.`}
+          info={`Summe aus allen Einkommensströmen über ${rangeLabel}: Shops (Lunch-Locations), Shopify-Webshop, Lieferdienste (Wolt + Foodora), Too Good To Go (netto, nach TGTG-Gebühr) und Projekte/Pop-ups.`}
         />
         <StatTile
           label="Shops"
           value={formatEur(kpis.currentShops)}
           sub="alle Standorte"
-          info={`Umsatz aus allen Lunch-Locations vor Ort, ${rangeEndLabel} zusammengerechnet.`}
+          info={`Umsatz aus allen Lunch-Locations vor Ort, ${rangeLabel} zusammengerechnet.`}
         />
         <StatTile
           label="Shopify"
           value={formatEur(kpis.currentShopify)}
           yoy={kpis.shopifyYoy}
-          info={`Der Auszahlungsbetrag aus dem Webshop karmafood.at für ${rangeEndLabel} (nach Shopify-Gebühren).`}
+          info={`Der Auszahlungsbetrag aus dem Webshop karmafood.at über ${rangeLabel} (nach Shopify-Gebühren).`}
         />
         <StatTile
           label="Lieferdienste"
           value={formatEur(kpis.currentDelivery)}
           sub="Wolt + Foodora"
           yoy={kpis.deliveryYoy}
-          info={`Auszahlungen von Wolt und Foodora zusammen, ${rangeEndLabel}. Die Prozentsätze, die die Lieferdienste selbst einbehalten, sind hier schon abgezogen.`}
+          info={`Auszahlungen von Wolt und Foodora zusammen über ${rangeLabel}. Die Prozentsätze, die die Lieferdienste selbst einbehalten, sind hier schon abgezogen.`}
         />
         <StatTile
           label="Too Good To Go"
@@ -104,7 +107,7 @@ export default async function DashboardPage({
               : "noch keine Daten"
           }
           yoy={kpis.tgtgYoy}
-          info={`Netto-Auszahlung von Too Good To Go für ${rangeEndLabel}: Verkaufswert der geretteten Überraschungssackerl${kpis.currentTgtgGross != null ? ` (Brutto ${formatEur(kpis.currentTgtgGross)})` : ""} minus TGTG-Reservierungsgebühr${kpis.currentTgtgFee != null ? ` (${formatEur(kpis.currentTgtgFee)})` : ""}. Das Netto ist das, was TGTG euch tatsächlich auszahlt.`}
+          info={`Netto-Auszahlung von Too Good To Go über ${rangeLabel}: Verkaufswert der geretteten Überraschungssackerl${kpis.currentTgtgGross != null ? ` (Brutto ${formatEur(kpis.currentTgtgGross)})` : ""} minus TGTG-Reservierungsgebühr${kpis.currentTgtgFee != null ? ` (${formatEur(kpis.currentTgtgFee)})` : ""}. Das Netto ist das, was TGTG euch tatsächlich auszahlt.`}
         />
       </div>
 
@@ -121,28 +124,31 @@ export default async function DashboardPage({
       </Card>
 
       <Card>
-        <CardHeader title="Standorte" subtitle={`Umsatz ${rangeEndLabel}`} />
+        <CardHeader
+          title="Standorte"
+          subtitle={`Umsatz gesamt, ${rangeLabel}`}
+        />
         {locationBar.length > 0 ? (
           <LocationBarChart data={locationBar} />
         ) : (
           <p className="text-sm text-ink/40 py-10 text-center">
-            Noch keine Standort-Daten für diesen Monat.
+            Noch keine Standort-Daten für diesen Zeitraum.
           </p>
         )}
       </Card>
 
       <p className="text-xs text-ink/35 mt-6">
-        Rabatte gesamt ({rangeEndLabel}): {formatEur(kpis.currentDiscounts)}
+        Rabatte gesamt ({rangeLabel}): {formatEur(kpis.currentDiscounts)}
         {" · "}
-        YoY = Veränderung ggü. demselben Monat im Vorjahr. &bdquo;Kein
-        Vorjahr&ldquo; heißt: für diesen Monat letztes Jahr liegt noch kein
+        YoY = Veränderung ggü. demselben Zeitraum im Vorjahr. &bdquo;Kein
+        Vorjahr&ldquo; heißt: für diesen Zeitraum im Vorjahr liegt noch kein
         Wert in der Datenbank vor.
         {" · "}
         Mit &bdquo;von–bis&ldquo; oben kannst du jeden beliebigen Zeitraum
-        anzeigen — der Überblick zeigt dann genau diese Monate, die
-        Kennzahlen oben beziehen sich immer auf den letzten Monat des
-        gewählten Zeitraums. &bdquo;Vorjahr vergleichen&ldquo; blendet die
-        gestrichelte Vorjahreslinie im Chart ein.
+        anzeigen — die Kennzahlen oben sind dann die Summe über genau diese
+        Monate, der Überblick zeigt sie einzeln. &bdquo;Vorjahr
+        vergleichen&ldquo; blendet die gestrichelte Vorjahreslinie im Chart
+        ein.
       </p>
     </div>
   );

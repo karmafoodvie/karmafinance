@@ -26,7 +26,7 @@ export interface ProductTrendPoint {
 export async function getPosProducts(
   fromPeriod: string,
   toPeriod: string,
-  locationCode?: string,
+  locationCodes?: string[],
   category?: string,
 ): Promise<PosProductMonthly[]> {
   const supabase = await createClient();
@@ -44,7 +44,8 @@ export async function getPosProducts(
       .lte("period_start", toPeriod)
       .order("id")
       .range(from, from + PAGE - 1);
-    if (locationCode) query = query.eq("location_code", locationCode);
+    if (locationCodes && locationCodes.length > 0)
+      query = query.in("location_code", locationCodes);
     if (category) query = query.eq("category", category);
     const { data, error } = await query;
     if (error) throw error;
@@ -77,11 +78,11 @@ export async function getProductCategories(): Promise<string[]> {
 
 export async function buildProductData(
   range: DateRange,
-  locationCode?: string,
+  locationCodes?: string[],
   category?: string,
 ) {
   const months = monthsInRange(range.from, range.to);
-  const rows = await getPosProducts(range.from, range.to, locationCode, category);
+  const rows = await getPosProducts(range.from, range.to, locationCodes, category);
 
   // Summen pro Produkt über den ganzen Zeitraum.
   const byProduct = new Map<

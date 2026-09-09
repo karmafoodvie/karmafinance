@@ -25,7 +25,7 @@ export default async function ShopsPage({
     toMonth?: string;
     year?: string;
     month?: string;
-    loc?: string;
+    locs?: string;
     cat?: string;
   }>;
 }) {
@@ -51,13 +51,22 @@ export default async function ShopsPage({
   const entryPeriod = periodStart(entryYear, entryMonth);
   const prevYearPeriod = periodStart(entryYear - 1, entryMonth);
 
-  const activeLocation = params.loc ?? "";
+  // Shop-Mehrfachauswahl: leer/fehlend = alle Shops. Nur gültige Codes
+  // zulassen, damit kein Unfug aus der URL durchrutscht.
+  const allLocationCodes = LOCATIONS.map((l) => l.code);
+  const selectedLocations = (params.locs ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((c) => allLocationCodes.includes(c as (typeof allLocationCodes)[number]));
+  const activeLocations =
+    selectedLocations.length > 0 ? selectedLocations : allLocationCodes;
+  const allSelected = activeLocations.length === allLocationCodes.length;
   const activeCategory = params.cat ?? "";
 
   const [product, categories, entries, prevYearEntries] = await Promise.all([
     buildProductData(
       { from: fromPeriod, to: toPeriod },
-      activeLocation || undefined,
+      allSelected ? undefined : activeLocations,
       activeCategory || undefined,
     ),
     getProductCategories(),
@@ -120,9 +129,9 @@ export default async function ShopsPage({
             trendProducts={product.trendProducts}
             revenueTrend={product.revenueTrend}
             quantityTrend={product.quantityTrend}
-            locations={ACTIVE_LOCATIONS}
+            locations={LOCATIONS}
             categories={categories}
-            activeLocation={activeLocation}
+            activeLocations={activeLocations}
             activeCategory={activeCategory}
           />
         </>

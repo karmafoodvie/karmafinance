@@ -34,7 +34,7 @@ export function ProductExplorer({
   quantityTrend,
   locations,
   categories,
-  activeLocation,
+  activeLocations,
   activeCategory,
 }: {
   summaries: ProductSummary[];
@@ -43,7 +43,7 @@ export function ProductExplorer({
   quantityTrend: ProductTrendPoint[];
   locations: LocationDef[];
   categories: string[];
-  activeLocation: string;
+  activeLocations: string[];
   activeCategory: string;
 }) {
   const router = useRouter();
@@ -75,6 +75,23 @@ export function ProductExplorer({
     if (value) params.set(key, value);
     else params.delete(key);
     router.push(`${pathname}?${params.toString()}`);
+  }
+
+  const allCodes = locations.map((l) => l.code);
+  const activeSet = new Set(activeLocations);
+
+  // Shop an-/wegklicken. Mindestens ein Shop muss aktiv bleiben; sind am
+  // Ende alle aktiv, wird der Parameter entfernt (= "alle Shops").
+  function toggleShop(code: string) {
+    const next = new Set(activeSet);
+    if (next.has(code)) next.delete(code);
+    else next.add(code);
+    if (next.size === 0) return; // nicht alle abwählen
+    const value =
+      next.size === allCodes.length
+        ? ""
+        : allCodes.filter((c) => next.has(c)).join(",");
+    setParam("locs", value);
   }
 
   function toggleProduct(name: string) {
@@ -115,20 +132,29 @@ export function ProductExplorer({
           }
         />
 
+        <div className="mb-4">
+          <p className="text-xs font-medium text-ink/40 mb-1.5">Shops</p>
+          <div className="flex flex-wrap gap-2">
+            {locations.map((l) => {
+              const on = activeSet.has(l.code);
+              return (
+                <button
+                  key={l.code}
+                  onClick={() => toggleShop(l.code)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                    on
+                      ? "bg-ink text-neon"
+                      : "bg-ink/5 text-ink/40 hover:bg-ink/10 line-through decoration-1"
+                  }`}
+                >
+                  {l.shortName}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-2 mb-4">
-          <Select
-            aria-label="Standort"
-            value={activeLocation}
-            onChange={(e) => setParam("loc", e.target.value)}
-            className="w-auto"
-          >
-            <option value="">Alle Shops</option>
-            {locations.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.shortName}
-              </option>
-            ))}
-          </Select>
           <Select
             aria-label="Kategorie"
             value={activeCategory}

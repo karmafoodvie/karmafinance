@@ -172,34 +172,57 @@ export async function buildDashboardData(range?: DateRange) {
     };
   });
 
-  const currentPeriod = months[months.length - 1].periodStart;
-  const prevMonthPeriod = months[months.length - 2]?.periodStart;
-  const currentYearPrevPeriod = format(
-    subMonths(new Date(currentPeriod), 12),
-    "yyyy-MM-01",
+  // Kennzahlen beziehen sich auf den GANZEN gewählten Zeitraum (Summe),
+  // nicht nur auf den letzten Monat. Der letzte Monat kann ein Teilmonat
+  // sein (z.B. laufender September) und ergäbe sonst eine irreführend
+  // niedrige "Umsatz gesamt"-Zahl.
+  const periods = months.map((m) => m.periodStart);
+  const prevYearPeriods = periods.map((p) =>
+    format(subMonths(new Date(p), 12), "yyyy-MM-01"),
   );
 
+  // Summe über die Perioden; null, wenn für keinen Monat Daten vorliegen
+  // (dann zeigt die Kachel "–" bzw. "kein Vorjahr").
+  function rangeSum(
+    fn: (p: string) => number | null,
+    ps: string[],
+  ): number | null {
+    let any = false;
+    let total = 0;
+    for (const p of ps) {
+      const v = fn(p);
+      if (v != null) {
+        any = true;
+        total += v;
+      }
+    }
+    return any ? total : null;
+  }
+
+  // Standorte: Umsatz je Standort über den ganzen Zeitraum aufsummiert.
+  const periodSet = new Set(periods);
   const locationBar = ACTIVE_LOCATIONS.map((loc) => ({
     label: loc.shortName,
-    value:
-      locationRows.find(
-        (r) => r.location_code === loc.code && r.period_start === currentPeriod,
-      )?.revenue_net ?? 0,
+    value: sum(
+      locationRows
+        .filter((r) => r.location_code === loc.code && periodSet.has(r.period_start))
+        .map((r) => r.revenue_net),
+    ),
   })).filter((d) => d.value > 0);
 
-  const currentTotal = companyTotalFor(currentPeriod);
-  const prevYearTotal = companyTotalFor(currentYearPrevPeriod);
-  const currentShopify = shopifyTotalFor(currentPeriod);
-  const prevYearShopify = shopifyTotalFor(currentYearPrevPeriod);
-  const currentDelivery = deliveryTotalFor(currentPeriod);
-  const prevYearDelivery = deliveryTotalFor(currentYearPrevPeriod);
-  const currentDiscounts = discountsTotalFor(currentPeriod);
-  const prevMonthTotal = prevMonthPeriod ? companyTotalFor(prevMonthPeriod) : null;
-  const currentTgtgNet = tgtgNetTotalFor(currentPeriod);
-  const currentTgtgGross = tgtgGrossTotalFor(currentPeriod);
-  const currentTgtgFee = tgtgFeeTotalFor(currentPeriod);
-  const currentTgtgMeals = tgtgMealsTotalFor(currentPeriod);
-  const prevYearTgtgNet = tgtgNetTotalFor(currentYearPrevPeriod);
+  const rangeTotal = sum(periods.map((p) => companyTotalFor(p)));
+  const rangeTotalPrev = sum(prevYearPeriods.map((p) => companyTotalFor(p)));
+  const rangeShops = sum(periods.map((p) => shopsTotalFor(p)));
+  const rangeShopify = rangeSum(shopifyTotalFor, periods);
+  const rangeShopifyPrev = rangeSum(shopifyTotalFor, prevYearPeriods);
+  const rangeDelivery = rangeSum(deliveryTotalFor, periods);
+  const rangeDeliveryPrev = rangeSum(deliveryTotalFor, prevYearPeriods);
+  const rangeDiscounts = sum(periods.map((p) => discountsTotalFor(p)));
+  const rangeTgtgNet = rangeSum(tgtgNetTotalFor, periods);
+  const rangeTgtgNetPrev = rangeSum(tgtgNetTotalFor, prevYearPeriods);
+  const rangeTgtgGross = rangeSum(tgtgGrossTotalFor, periods);
+  const rangeTgtgFee = rangeSum(tgtgFeeTotalFor, periods);
+  const rangeTgtgMeals = rangeSum(tgtgMealsTotalFor, periods);
 
   return {
     months,
@@ -207,20 +230,19 @@ export async function buildDashboardData(range?: DateRange) {
     streamComparison,
     locationBar,
     kpis: {
-      currentTotal,
-      totalYoy: yoyPercent(currentTotal, prevYearTotal || null),
-      momChange: yoyPercent(currentTotal, prevMonthTotal),
-      currentShops: shopsTotalFor(currentPeriod),
-      currentShopify,
-      shopifyYoy: yoyPercent(currentShopify, prevYearShopify),
-      currentDelivery,
-      deliveryYoy: yoyPercent(currentDelivery, prevYearDelivery),
-      currentDiscounts,
-      currentTgtgNet,
-      currentTgtgGross,
-      currentTgtgFee,
-      currentTgtgMeals,
-      tgtgYoy: yoyPercent(currentTgtgNet, prevYearTgtgNet),
+      currentTotal: rangeTotal,
+      totalYoy: yoyPercent(rangeTotal, rangeTotalPrev || null),
+      currentShops: rangeShops,
+      currentShopify: rangeShopify,
+      shopifyYoy: yoyPercent(rangeShopify, rangeShopifyPrev),
+      currentDelivery: rangeDelivery,
+      deliveryYoy: yoyPercent(rangeDelivery, rangeDeliveryPrev),
+      currentDiscounts: rangeDiscounts,
+      currentTgtgNet: rangeTgtgNet,
+      currentTgtgGross: rangeTgtgGross,
+      currentTgtgFee: rangeTgtgFee,
+      currentTgtgMeals: rangeTgtgMeals,
+      tgtgYoy: yoyPercent(rangeTgtgNet, rangeTgtgNetPrev),
     },
   };
 }
