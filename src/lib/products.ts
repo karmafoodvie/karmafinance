@@ -30,25 +30,49 @@ export async function getPosProducts(
   category?: string,
 ): Promise<PosProductMonthly[]> {
   const supabase = await createClient();
-  let query = supabase
-    .from("pos_product_monthly")
-    .select("*")
-    .gte("period_start", fromPeriod)
-    .lte("period_start", toPeriod);
-  if (locationCode) query = query.eq("location_code", locationCode);
-  if (category) query = query.eq("category", category);
-  const { data, error } = await query;
-  if (error) throw error;
-  return data;
+  // Supabase/PostgREST liefert pro Abfrage max. 1000 Zeilen. Ein längerer
+  // Zeitraum hat aber leicht mehrere tausend Produktzeilen — deshalb hier
+  // seitenweise nachladen, bis alles da ist. Sonst würden Umsätze und
+  // Trend-Kurven ab der 1000. Zeile einfach fehlen.
+  const PAGE = 1000;
+  const all: PosProductMonthly[] = [];
+  for (let from = 0; ; from += PAGE) {
+    let query = supabase
+      .from("pos_product_monthly")
+      .select("*")
+      .gte("period_start", fromPeriod)
+      .lte("period_start", toPeriod)
+      .order("id")
+      .range(from, from + PAGE - 1);
+    if (locationCode) query = query.eq("location_code", locationCode);
+    if (category) query = query.eq("category", category);
+    const { data, error } = await query;
+    if (error) throw error;
+    all.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return all;
 }
 
 export async function getProductCategories(): Promise<string[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("pos_product_monthly")
-    .select("category");
-  if (error) throw error;
-  return Array.from(new Set(data.map((r) => r.category as string))).sort();
+  // Distinct über eine RPC wäre schöner, aber ohne eigene DB-Funktion holen
+  // wir die Kategorie-Spalte seitenweise und dedupen selbst — sonst würden
+  // bei >1000 Zeilen (2025 zuerst eingespielt) die neueren 2026-Kategorien
+  // wie "Lassi House" im Filter fehlen.
+  const PAGE = 1000;
+  const set = new Set<string>();
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("pos_product_monthly")
+      .select("category")
+      .order("id")
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    for (const r of data) set.add(r.category as string);
+    if (data.length < PAGE) break;
+  }
+  return Array.from(set).sort();
 }
 
 export async function buildProductData(
