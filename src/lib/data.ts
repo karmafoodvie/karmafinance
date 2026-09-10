@@ -7,6 +7,7 @@ import type {
   FoodoraMonthly,
   FoodoraLocationPayout,
   TgtgLocationPayout,
+  SchrankelrMonthly,
   ProjectRevenue,
   BusinessEvent,
 } from "@/lib/supabase/types";
@@ -271,4 +272,30 @@ export async function deleteBusinessEvent(id: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("business_events").delete().eq("id", id);
   if (error) throw error;
+}
+
+export async function getSchrankelrMonthly(
+  periodStart: string,
+): Promise<SchrankelrMonthly | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("schrankerl_monthly")
+    .select("*")
+    .eq("period_start", periodStart)
+    .eq("period_type", "monthly")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function getSchrankelrSeries(fromPeriod: string): Promise<SchrankelrMonthly[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("schrankerl_monthly")
+    .select("*")
+    .eq("period_type", "monthly")
+    .gte("period_start", fromPeriod)
+    .order("period_start");
+  if (error) throw error;
+  return data;
 }

@@ -13,7 +13,6 @@ import {
   PRODUCT_GROUPS,
 } from "@/lib/products";
 import { PeriodPicker } from "@/components/erfassen/PeriodPicker";
-import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import { LocationMonthlyForm } from "@/components/erfassen/LocationMonthlyForm";
 import { ProductExplorer } from "@/components/shops/ProductExplorer";
 import { GroupByStore } from "@/components/shops/GroupByStore";
@@ -121,21 +120,6 @@ export default async function ShopsPage({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="font-heading text-xl">Shops</h1>
-          <p className="text-sm text-ink/50 mt-1">
-            Lunch-Locations — Produktentwicklung und Monatsumsätze
-          </p>
-        </div>
-        <DateRangePicker
-          fromYear={fromYear}
-          fromMonth={fromMonth}
-          toYear={toYear}
-          toMonth={toMonth}
-        />
-      </div>
-
       {product.hasData ? (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">

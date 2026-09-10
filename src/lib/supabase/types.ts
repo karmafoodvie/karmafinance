@@ -1,4 +1,4 @@
-// Handgeschriebene Typen passend zu supabase/migrations/0001_init.sql.
+// Handgeschriebene Typen passend zu supabase/migrations/*.sql.
 // Bei Schemaänderungen: entweder hier nachziehen, oder
 // `npx supabase gen types typescript --project-id <ref>` laufen lassen
 // und diese Datei ersetzen.
@@ -132,5 +132,16 @@ export interface BusinessEvent {
   note: string | null;
   tags: string[];
   created_by: string | null;
+  updated_at: string;
+}
+
+export interface SchrankelrMonthly {
+  id: string;
+  period_start: string;
+  period_type: "monthly" | "weekly";
+  units_sold: number | null;
+  revenue_gross: number | null;
+  payout_amount: number | null;
+  updated_by: string | null;
   updated_at: string;
 }
