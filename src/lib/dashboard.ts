@@ -342,3 +342,190 @@ export async function buildTgtgDashboardData(range?: DateRange) {
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Jahresvergleich: laufendes Jahr gegen Vorjahr(e), Monat für Monat übereinander
+// gelegt. Standard: bisheriges Jahr (Jän bis letzter abgeschlossener Monat),
+// fairer Vergleich ohne den laufenden Teilmonat. Für die Ganzjahres-Ansicht
+// wird der Rest des laufenden Jahres als Prognose fortgeschrieben.
+// ---------------------------------------------------------------------------
+
+export interface YearLine {
+  year: number;
+  // 12 Werte (Jän..Dez). null = kein Ist-Wert (Zukunft im laufenden Jahr).
+  actual: (number | null)[];
+  // Prognose nur fürs laufende Jahr, sonst überall null. Beginnt am letzten
+  // Ist-Monat, damit die gestrichelte Linie nahtlos anschließt.
+  forecast: (number | null)[];
+}
+
+export interface StreamDelta {
+  key: string;
+  label: string;
+  current: number | null;
+  previous: number | null;
+  deltaPct: number | null;
+}
+
+const MONTH_LABELS_SHORT = Array.from({ length: 12 }, (_, i) =>
+  format(new Date(2001, i, 1), "MMM", { locale: de }),
+);
+
+export async function buildYearComparison(referenceDate = new Date()) {
+  const currentYear = referenceDate.getFullYear();
+  // Letzter abgeschlossener Monat = Monat vor dem laufenden (1-basiert).
+  // getMonth() ist 0-basiert: im September (=8) sind Jän..Aug abgeschlossen,
+  // also lastComplete = 8.
+  const lastComplete = referenceDate.getMonth(); // 0..12; 0 = Jänner läuft noch
+
+  // Ab dem Vor-Vorjahr laden, damit ein Vorjahresvergleich auch für das
+  // früheste gezeigte Jahr möglich ist.
+  const fromPeriod = `${currentYear - 2}-01-01`;
+
+  const [locationRows, shopifyRows, woltRows, foodoraRows, tgtgRows, projectRows] =
+    await Promise.all([
+      getLocationMonthlySeries(fromPeriod),
+      getShopifySeries(fromPeriod),
+      getWoltSeries(fromPeriod),
+      getFoodoraSeries(fromPeriod),
+      getTgtgSeries(fromPeriod),
+      getProjectRevenue(),
+    ]);
+
+  const period = (year: number, month1: number) =>
+    `${year}-${String(month1).padStart(2, "0")}-01`;
+
+  function shopsFor(p: string) {
+    return sum(locationRows.filter((r) => r.period_start === p).map((r) => r.revenue_net));
+  }
+  function shopifyFor(p: string) {
+    return shopifyRows.find((r) => r.period_start === p)?.payout_amount ?? 0;
+  }
+  function deliveryFor(p: string) {
+    const w = sum(woltRows.filter((r) => r.period_start === p).map((r) => r.payout_amount));
+    const f = foodoraRows.find((r) => r.period_start === p)?.payout_total ?? 0;
+    return w + f;
+  }
+  function tgtgFor(p: string) {
+    return sum(tgtgRows.filter((r) => r.period_start === p).map((r) => r.revenue_net));
+  }
+  function projectsFor(p: string) {
+    return sum(projectRows.filter((r) => r.period_start === p).map((r) => r.revenue_net));
+  }
+  function companyFor(p: string) {
+    return shopsFor(p) + shopifyFor(p) + deliveryFor(p) + tgtgFor(p) + projectsFor(p);
+  }
+
+  // Ein Monat "hat Daten", wenn irgendein Kanal für diese Periode etwas liefert.
+  function hasData(p: string) {
+    return (
+      locationRows.some((r) => r.period_start === p) ||
+      shopifyRows.some((r) => r.period_start === p) ||
+      woltRows.some((r) => r.period_start === p) ||
+      foodoraRows.some((r) => r.period_start === p) ||
+      tgtgRows.some((r) => r.period_start === p) ||
+      projectRows.some((r) => r.period_start === p)
+    );
+  }
+
+  // Nur Jahre zeigen, für die es Shop-Umsätze (Lunch-Locations) gibt — sonst
+  // wäre die "Gesamt"-Linie irreführend (z.B. 2024 = nur Shopify).
+  const shopYears = Array.from(
+    new Set(locationRows.map((r) => Number(r.period_start.slice(0, 4)))),
+  ).sort();
+  const yearsToShow = shopYears.filter((y) => y <= currentYear);
+
+  // Prognose-Faktor: Wie steht das laufende Jahr bisher im Verhältnis zum
+  // Vorjahr? Diesen Faktor auf die Vorjahres-Restmonate anwenden.
+  const prevYear = currentYear - 1;
+  let ytdCurrent = 0;
+  let ytdPrev = 0;
+  for (let m = 1; m <= lastComplete; m++) {
+    ytdCurrent += companyFor(period(currentYear, m));
+    ytdPrev += companyFor(period(prevYear, m));
+  }
+  const forecastRatio = ytdPrev > 0 ? ytdCurrent / ytdPrev : null;
+
+  const lines: YearLine[] = yearsToShow.map((year) => {
+    const actual: (number | null)[] = [];
+    const forecast: (number | null)[] = [];
+    for (let m = 1; m <= 12; m++) {
+      const p = period(year, m);
+      const isCurrentYear = year === currentYear;
+      const isComplete = !isCurrentYear || m <= lastComplete;
+      actual.push(isComplete && hasData(p) ? companyFor(p) : null);
+      // Prognose nur fürs laufende Jahr, ab dem letzten Ist-Monat.
+      if (isCurrentYear && forecastRatio != null && m >= lastComplete) {
+        forecast.push(
+          m === lastComplete
+            ? companyFor(period(currentYear, m)) // Anschlusspunkt = Ist
+            : companyFor(period(prevYear, m)) * forecastRatio,
+        );
+      } else {
+        forecast.push(null);
+      }
+    }
+    return { year, actual, forecast };
+  });
+
+  // Prognose Jahresende laufendes Jahr = Ist bisher + hochgerechnete Restmonate.
+  let projectedYearEnd: number | null = null;
+  if (forecastRatio != null) {
+    let total = ytdCurrent;
+    for (let m = lastComplete + 1; m <= 12; m++) {
+      total += companyFor(period(prevYear, m)) * forecastRatio;
+    }
+    projectedYearEnd = total;
+  }
+  const prevYearFullTotal = hasData(period(prevYear, 12))
+    ? Array.from({ length: 12 }, (_, i) => companyFor(period(prevYear, i + 1))).reduce(
+        (a, b) => a + b,
+        0,
+      )
+    : null;
+
+  // Pro-Kanal-Veränderung, bisheriges Jahr vs. Vorjahr (gleicher Zeitraum).
+  function ytdSum(fn: (p: string) => number, year: number) {
+    let t = 0;
+    for (let m = 1; m <= lastComplete; m++) t += fn(period(year, m));
+    return t;
+  }
+  const streamDefs: { key: string; label: string; fn: (p: string) => number }[] = [
+    { key: "shops", label: "Shops", fn: shopsFor },
+    { key: "shopify", label: "Shopify", fn: shopifyFor },
+    { key: "delivery", label: "Lieferdienste", fn: deliveryFor },
+    { key: "tgtg", label: "Too Good To Go", fn: tgtgFor },
+    { key: "projects", label: "Projekte", fn: projectsFor },
+  ];
+  const perStream: StreamDelta[] = streamDefs.map((s) => {
+    const current = lastComplete > 0 ? ytdSum(s.fn, currentYear) : null;
+    const previous = lastComplete > 0 ? ytdSum(s.fn, prevYear) : null;
+    return {
+      key: s.key,
+      label: s.label,
+      current: current && current !== 0 ? current : current === 0 ? 0 : null,
+      previous: previous && previous !== 0 ? previous : previous === 0 ? 0 : null,
+      deltaPct: yoyPercent(current, previous || null),
+    };
+  });
+
+  const throughLabel = lastComplete > 0 ? MONTH_LABELS_SHORT[lastComplete - 1] : null;
+
+  return {
+    monthLabels: MONTH_LABELS_SHORT,
+    lastComplete, // Anzahl abgeschlossener Monate (0..12)
+    currentYear,
+    prevYear,
+    lines,
+    ytd: {
+      throughLabel,
+      current: lastComplete > 0 ? ytdCurrent : null,
+      previous: lastComplete > 0 ? ytdPrev : null,
+      deltaPct: yoyPercent(lastComplete > 0 ? ytdCurrent : null, lastComplete > 0 ? ytdPrev : null),
+    },
+    projectedYearEnd,
+    prevYearFullTotal,
+    perStream,
+    hasComparison: yearsToShow.length >= 2 && lastComplete > 0,
+  };
+}

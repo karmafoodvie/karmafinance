@@ -18,7 +18,7 @@ export function YoyBadge({ value }: { value: number | null }) {
         positive ? "bg-neon text-ink" : "bg-orange/15 text-orange",
       )}
     >
-      {formatPercent(value)} YoY
+      {formatPercent(value)} vs. Vorjahr
     </span>
   );
 }

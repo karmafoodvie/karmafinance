@@ -6,11 +6,17 @@ import {
   monthLabel,
 } from "@/lib/constants";
 import { getLocationMonthlyForPeriod } from "@/lib/data";
-import { buildProductData, getProductCategories } from "@/lib/products";
+import {
+  buildProductData,
+  buildGroupByLocation,
+  getProductCategories,
+  PRODUCT_GROUPS,
+} from "@/lib/products";
 import { PeriodPicker } from "@/components/erfassen/PeriodPicker";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import { LocationMonthlyForm } from "@/components/erfassen/LocationMonthlyForm";
 import { ProductExplorer } from "@/components/shops/ProductExplorer";
+import { GroupByStore } from "@/components/shops/GroupByStore";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { formatEur, formatNumber } from "@/lib/calculations";
@@ -27,6 +33,10 @@ export default async function ShopsPage({
     month?: string;
     locs?: string;
     cat?: string;
+    grp?: string;
+    typ?: string;
+    storegrp?: string;
+    storetyp?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -63,13 +73,38 @@ export default async function ShopsPage({
   const allSelected = activeLocations.length === allLocationCodes.length;
   const activeCategory = params.cat ?? "";
 
-  const [product, categories, entries, prevYearEntries] = await Promise.all([
+  // Überkategorie-Filter (nur gültige Werte zulassen).
+  const groupList: string[] = [...PRODUCT_GROUPS];
+  const activeGroup = groupList.includes(params.grp ?? "") ? (params.grp as string) : "";
+  const activeType =
+    activeGroup === "Hauptgerichte" && (params.typ === "Classic" || params.typ === "Special")
+      ? params.typ
+      : "";
+
+  // "Pro Standort"-Ansicht: eigene Gruppe, Standard = Lunch Combos.
+  const storeGroup = groupList.includes(params.storegrp ?? "")
+    ? (params.storegrp as string)
+    : "Lunch Combos";
+  const storeType =
+    storeGroup === "Hauptgerichte" && (params.storetyp === "Classic" || params.storetyp === "Special")
+      ? params.storetyp
+      : "";
+
+  const [product, categories, byStore, entries, prevYearEntries] = await Promise.all([
     buildProductData(
       { from: fromPeriod, to: toPeriod },
       allSelected ? undefined : activeLocations,
       activeCategory || undefined,
+      activeGroup || undefined,
+      activeType || undefined,
     ),
     getProductCategories(),
+    buildGroupByLocation(
+      { from: fromPeriod, to: toPeriod },
+      storeGroup,
+      ACTIVE_LOCATIONS.map((l) => ({ code: l.code, shortName: l.shortName })),
+      storeType || undefined,
+    ),
     getLocationMonthlyForPeriod(entryPeriod),
     getLocationMonthlyForPeriod(prevYearPeriod),
   ]);
@@ -131,8 +166,23 @@ export default async function ShopsPage({
             quantityTrend={product.quantityTrend}
             locations={LOCATIONS}
             categories={categories}
+            groupTotals={product.groupTotals}
             activeLocations={activeLocations}
             activeCategory={activeCategory}
+            activeGroup={activeGroup}
+            activeType={activeType}
+          />
+
+          <GroupByStore
+            group={storeGroup}
+            groups={groupList}
+            activeType={storeType}
+            storeKeys={byStore.storeKeys}
+            revenueTrend={byStore.revenueTrend}
+            quantityTrend={byStore.quantityTrend}
+            storeTotals={byStore.storeTotals}
+            hasData={byStore.hasData}
+            rangeLabel={`${rangeStartLabel} – ${rangeEndLabel}`}
           />
         </>
       ) : (

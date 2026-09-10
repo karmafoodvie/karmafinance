@@ -1,5 +1,5 @@
 import { subMonths } from "date-fns";
-import { buildDashboardData } from "@/lib/dashboard";
+import { buildDashboardData, buildYearComparison } from "@/lib/dashboard";
 import { formatEur } from "@/lib/calculations";
 import { QUICK_LINKS, periodStart } from "@/lib/constants";
 import { StatTile } from "@/components/ui/StatTile";
@@ -8,6 +8,7 @@ import { QuickLinks } from "@/components/ui/QuickLinks";
 import { CombinedRevenueChart } from "@/components/charts/CombinedRevenueChart";
 import { LocationBarChart } from "@/components/charts/LocationBarChart";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
+import { YearComparison } from "@/components/dashboard/YearComparison";
 
 export default async function DashboardPage({
   searchParams,
@@ -36,8 +37,11 @@ export default async function DashboardPage({
     [fromPeriod, toPeriod] = [toPeriod, fromPeriod];
   }
 
-  const { streamComparison, locationBar, kpis, months } =
-    await buildDashboardData({ from: fromPeriod, to: toPeriod });
+  const [{ streamComparison, locationBar, kpis, months }, yearComparison] =
+    await Promise.all([
+      buildDashboardData({ from: fromPeriod, to: toPeriod }),
+      buildYearComparison(),
+    ]);
 
   const rangeStartLabel = months[0]?.label ?? "";
   const rangeEndLabel = months[months.length - 1]?.label ?? "";
@@ -111,6 +115,20 @@ export default async function DashboardPage({
         />
       </div>
 
+      {yearComparison.hasComparison && (
+        <YearComparison
+          monthLabels={yearComparison.monthLabels}
+          lastComplete={yearComparison.lastComplete}
+          currentYear={yearComparison.currentYear}
+          prevYear={yearComparison.prevYear}
+          lines={yearComparison.lines}
+          ytd={yearComparison.ytd}
+          projectedYearEnd={yearComparison.projectedYearEnd}
+          prevYearFullTotal={yearComparison.prevYearFullTotal}
+          perStream={yearComparison.perStream}
+        />
+      )}
+
       <Card className="mb-4">
         <CardHeader
           title="Umsatz im Überblick"
@@ -140,9 +158,9 @@ export default async function DashboardPage({
       <p className="text-xs text-ink/35 mt-6">
         Rabatte gesamt ({rangeLabel}): {formatEur(kpis.currentDiscounts)}
         {" · "}
-        YoY = Veränderung ggü. demselben Zeitraum im Vorjahr. &bdquo;Kein
-        Vorjahr&ldquo; heißt: für diesen Zeitraum im Vorjahr liegt noch kein
-        Wert in der Datenbank vor.
+        &bdquo;vs. Vorjahr&ldquo; = Veränderung ggü. demselben Zeitraum im
+        Vorjahr. &bdquo;Kein Vorjahr&ldquo; heißt: für diesen Zeitraum im
+        Vorjahr liegt noch kein Wert in der Datenbank vor.
         {" · "}
         Mit &bdquo;von–bis&ldquo; oben kannst du jeden beliebigen Zeitraum
         anzeigen — die Kennzahlen oben sind dann die Summe über genau diese

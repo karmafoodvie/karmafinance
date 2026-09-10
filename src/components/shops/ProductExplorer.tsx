@@ -22,7 +22,7 @@ import { formatEur, formatNumber, formatPercent } from "@/lib/calculations";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
 import { Select } from "@/components/ui/Select";
-import type { ProductSummary, ProductTrendPoint } from "@/lib/products";
+import type { ProductSummary, ProductTrendPoint, GroupTotal } from "@/lib/products";
 import type { LocationDef } from "@/lib/constants";
 
 type Metric = "revenue" | "quantity";
@@ -34,8 +34,11 @@ export function ProductExplorer({
   quantityTrend,
   locations,
   categories,
+  groupTotals,
   activeLocations,
   activeCategory,
+  activeGroup,
+  activeType,
 }: {
   summaries: ProductSummary[];
   trendProducts: string[];
@@ -43,8 +46,11 @@ export function ProductExplorer({
   quantityTrend: ProductTrendPoint[];
   locations: LocationDef[];
   categories: string[];
+  groupTotals: GroupTotal[];
   activeLocations: string[];
   activeCategory: string;
+  activeGroup: string;
+  activeType: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -104,12 +110,21 @@ export function ProductExplorer({
     ? (v: number) => formatEur(v)
     : (v: number) => formatNumber(v);
 
+  // Überkategorie setzen; Classic/Special beim Wechsel zurücksetzen.
+  function setGroup(group: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (group) params.set("grp", group);
+    else params.delete("grp");
+    params.delete("typ");
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
   return (
     <div>
       <Card className="mb-4">
         <CardHeader
           title="Produkte im Zeitverlauf"
-          subtitle="Produkt anklicken, um es ins Diagramm zu legen"
+          subtitle="Überkategorie wählen, dann Produkt anklicken fürs Diagramm"
           action={
             <div className="flex items-center gap-2">
               <button
@@ -131,6 +146,52 @@ export function ProductExplorer({
             </div>
           }
         />
+
+        {/* Überkategorien */}
+        <div className="mb-4">
+          <p className="text-xs font-medium text-ink/40 mb-1.5">Überkategorie</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setGroup("")}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                activeGroup === "" ? "bg-ink text-neon" : "bg-ink/5 text-ink/60 hover:bg-ink/10"
+              }`}
+            >
+              Alle
+            </button>
+            {groupTotals.map((g) => (
+              <button
+                key={g.group}
+                onClick={() => setGroup(g.group)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                  activeGroup === g.group ? "bg-ink text-neon" : "bg-ink/5 text-ink/60 hover:bg-ink/10"
+                }`}
+              >
+                {g.group}{" "}
+                <span className={activeGroup === g.group ? "text-neon/70" : "text-ink/35"}>
+                  {formatEur(g.revenue)}
+                </span>
+              </button>
+            ))}
+          </div>
+          {activeGroup === "Hauptgerichte" && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {["", "Classic", "Special"].map((t) => (
+                <button
+                  key={t || "alle"}
+                  onClick={() => setParam("typ", t)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                    activeType === t
+                      ? "bg-neon text-ink"
+                      : "bg-ink/5 text-ink/50 hover:bg-ink/10"
+                  }`}
+                >
+                  {t === "" ? "Classic + Special" : t}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="mb-4">
           <p className="text-xs font-medium text-ink/40 mb-1.5">Shops</p>
@@ -267,7 +328,7 @@ export function ProductExplorer({
             <thead>
               <tr className="text-left text-ink/45 border-b border-ink/10">
                 <th className="font-medium py-2 pr-3">Produkt</th>
-                <th className="font-medium py-2 px-3">Kategorie</th>
+                <th className="font-medium py-2 px-3">Überkategorie</th>
                 <th className="font-medium py-2 px-3 text-right">Stück</th>
                 <th className="font-medium py-2 px-3 text-right">Umsatz</th>
                 <th className="font-medium py-2 px-3 text-right">Marge</th>
@@ -290,7 +351,8 @@ export function ProductExplorer({
                     )}
                   </td>
                   <td className="py-2 px-3 text-ink/45">
-                    {s.category === "All" ? "Rabatt" : s.category}
+                    {s.group}
+                    {s.type ? ` · ${s.type}` : ""}
                   </td>
                   <td className="py-2 px-3 text-right tabular-nums">
                     {formatNumber(Math.round(s.quantity))}

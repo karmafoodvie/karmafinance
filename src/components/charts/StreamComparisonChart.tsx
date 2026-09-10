@@ -18,9 +18,10 @@ export interface StreamPoint {
   Shops: number;
   Shopify: number;
   Lieferdienste: number;
+  TGTG: number;
 }
 
-const KEYS: Array<keyof Omit<StreamPoint, "label">> = ["Shops", "Shopify", "Lieferdienste"];
+const KEYS: Array<keyof Omit<StreamPoint, "label">> = ["Shops", "Shopify", "Lieferdienste", "TGTG"];
 
 export function StreamComparisonChart({ data }: { data: StreamPoint[] }) {
   return (
