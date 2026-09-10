@@ -23,6 +23,11 @@ export function DateRangePicker({ fromYear, fromMonth, toYear, toMonth }: Props)
     router.push(
       `${pathname}?fromYear=${fy}&fromMonth=${fm}&toYear=${ty}&toMonth=${tm}`,
     );
+    // Next.js cacht Server-Component-Seiten client-seitig kurz (Router
+    // Cache) — ohne refresh() zeigt die Seite nach einer Zeitraum-Änderung
+    // manchmal noch die alten Zahlen, bis der Cache von selbst abläuft.
+    // refresh() erzwingt sofort einen frischen Datenabruf vom Server.
+    router.refresh();
   }
 
   function preset(months: number | "ytd" | "all") {
