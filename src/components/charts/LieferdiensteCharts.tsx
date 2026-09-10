@@ -116,6 +116,63 @@ function Stat({ label, value, sub, color }: { label: string; value: string; sub?
   );
 }
 
+// ─── YoY helpers ─────────────────────────────────────────────────────────────
+function pct(now: number, prev: number) {
+  if (!prev) return null;
+  return ((now - prev) / prev) * 100;
+}
+
+function yoyLabel(p: number | null) {
+  if (p === null) return null;
+  const sign = p >= 0 ? "+" : "";
+  return `${sign}${p.toFixed(1)} % vs. Vorjahr`;
+}
+
+// Find months that exist in both years (same MM month number)
+function buildYoyData(
+  payouts: (WoltLocationPayout | FoodoraLocationPayout)[],
+  locations: string[]
+) {
+  // group by month-number (MM) and year
+  const byMonthYear: Record<string, Record<string, number>> = {};
+  payouts.forEach((r) => {
+    const [y, m] = r.period_start.split("-");
+    const key = m; // "08"
+    if (!byMonthYear[key]) byMonthYear[key] = {};
+    if (!byMonthYear[key][y]) byMonthYear[key][y] = 0;
+    byMonthYear[key][y] += r.payout_amount ?? 0;
+  });
+  // Keep only months where both 2025 and 2026 exist
+  const overlap = Object.entries(byMonthYear)
+    .filter(([, years]) => years["2025"] !== undefined && years["2026"] !== undefined)
+    .map(([m, years]) => ({
+      month: MONTH_LABELS[m] ?? m,
+      "2025": Math.round(years["2025"] * 100) / 100,
+      "2026": Math.round(years["2026"] * 100) / 100,
+    }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  // Per-location YoY for each overlapping month
+  const locYoy: Record<string, { prev: number; curr: number }> = {};
+  locations.forEach((loc) => {
+    const locPayouts = payouts.filter((r) => r.location_code === loc);
+    // sum per year for all overlapping months
+    let prev = 0, curr = 0;
+    Object.entries(byMonthYear)
+      .filter(([, years]) => years["2025"] !== undefined && years["2026"] !== undefined)
+      .forEach(([m]) => {
+        locPayouts.forEach((r) => {
+          const [y, rm] = r.period_start.split("-");
+          if (rm === m && y === "2025") prev += r.payout_amount ?? 0;
+          if (rm === m && y === "2026") curr += r.payout_amount ?? 0;
+        });
+      });
+    locYoy[loc] = { prev, curr };
+  });
+
+  return { overlap, locYoy };
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export function LieferdiensteCharts({ woltPayouts, foodoraPayouts }: Props) {
   // aggregate totals
@@ -128,9 +185,20 @@ export function LieferdiensteCharts({ woltPayouts, foodoraPayouts }: Props) {
   const bestWolt = trend.reduce((a, b) => (b.Wolt > a.Wolt ? b : a), trend[0]);
   const bestFoodora = trend.reduce((a, b) => (b.Foodora > a.Foodora ? b : a), trend[0]);
 
-  // per-location data
+  // YoY data
   const woltLocations = Array.from(new Set(woltPayouts.map((r) => r.location_code))).sort();
   const foodoraLocations = Array.from(new Set(foodoraPayouts.map((r) => r.location_code))).sort();
+  const woltYoy = buildYoyData(woltPayouts, woltLocations);
+  const foodoraYoy = buildYoyData(foodoraPayouts, foodoraLocations);
+  const hasYoy = woltYoy.overlap.length > 0 || foodoraYoy.overlap.length > 0;
+  // Total for overlapping months
+  const woltPrev = woltYoy.overlap.reduce((s, r) => s + r["2025"], 0);
+  const woltCurr = woltYoy.overlap.reduce((s, r) => s + r["2026"], 0);
+  const foodPrev = foodoraYoy.overlap.reduce((s, r) => s + r["2025"], 0);
+  const foodCurr = foodoraYoy.overlap.reduce((s, r) => s + r["2026"], 0);
+  const overlapLabel = woltYoy.overlap.map((r) => r.month).join(", ");
+
+  // per-location data
   const woltLocale = buildLocaleData(woltPayouts, woltLocations);
   const foodoraLocale = buildLocaleData(foodoraPayouts, foodoraLocations);
 
@@ -171,6 +239,120 @@ export function LieferdiensteCharts({ woltPayouts, foodoraPayouts }: Props) {
             : `Wolt ${bestWolt.month}`}
         />
       </div>
+
+      {/* YoY Jahresvergleich */}
+      {hasYoy && (
+        <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">
+          <div className="flex items-start justify-between gap-2 mb-4 flex-wrap">
+            <div>
+              <p className="text-sm font-medium">Jahresvergleich</p>
+              <p className="text-xs text-ink/45 mt-0.5">
+                {overlapLabel} 2025 vs. {overlapLabel} 2026 — gleicher Zeitraum im Vorjahr
+              </p>
+            </div>
+          </div>
+
+          {/* YoY Stat tiles */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            {woltYoy.overlap.length > 0 && (
+              <>
+                <div className="rounded-xl border border-ink/10 bg-cream/60 p-3 flex flex-col gap-1">
+                  <span className="text-xs font-medium uppercase tracking-wide text-ink/45">
+                    Wolt {overlapLabel} '25
+                  </span>
+                  <span className="font-heading text-xl" style={{ color: CHART_SERIES[0] }}>
+                    {formatEur(woltPrev, true)}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-ink/10 bg-cream/60 p-3 flex flex-col gap-1">
+                  <span className="text-xs font-medium uppercase tracking-wide text-ink/45">
+                    Wolt {overlapLabel} '26
+                  </span>
+                  <span className="font-heading text-xl" style={{ color: CHART_SERIES[0] }}>
+                    {formatEur(woltCurr, true)}
+                  </span>
+                  {yoyLabel(pct(woltCurr, woltPrev)) && (
+                    <span className={`text-xs font-medium ${woltCurr >= woltPrev ? "text-emerald-600" : "text-red-500"}`}>
+                      {yoyLabel(pct(woltCurr, woltPrev))}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+            {foodoraYoy.overlap.length > 0 && (
+              <>
+                <div className="rounded-xl border border-ink/10 bg-cream/60 p-3 flex flex-col gap-1">
+                  <span className="text-xs font-medium uppercase tracking-wide text-ink/45">
+                    Foodora {overlapLabel} '25
+                  </span>
+                  <span className="font-heading text-xl" style={{ color: CHART_SERIES[1] }}>
+                    {formatEur(foodPrev, true)}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-ink/10 bg-cream/60 p-3 flex flex-col gap-1">
+                  <span className="text-xs font-medium uppercase tracking-wide text-ink/45">
+                    Foodora {overlapLabel} '26
+                  </span>
+                  <span className="font-heading text-xl" style={{ color: CHART_SERIES[1] }}>
+                    {formatEur(foodCurr, true)}
+                  </span>
+                  {yoyLabel(pct(foodCurr, foodPrev)) && (
+                    <span className={`text-xs font-medium ${foodCurr >= foodPrev ? "text-emerald-600" : "text-red-500"}`}>
+                      {yoyLabel(pct(foodCurr, foodPrev))}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Per-location YoY */}
+          <p className="text-xs font-medium text-ink/50 uppercase tracking-wide mb-2">Pro Standort</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {woltLocations.map((loc) => {
+              const { prev, curr } = woltYoy.locYoy[loc] ?? { prev: 0, curr: 0 };
+              if (!prev && !curr) return null;
+              const p = pct(curr, prev);
+              return (
+                <div key={`w-${loc}`} className="rounded-xl border border-ink/10 bg-cream/40 p-3">
+                  <p className="text-xs text-ink/45 mb-1">
+                    <span style={{ color: LOCATION_COLORS[loc] }}>● </span>
+                    {LOCATION_LABELS[loc] ?? loc} (Wolt)
+                  </p>
+                  <p className="text-sm font-semibold">{formatEur(curr, true)}</p>
+                  {p !== null && (
+                    <p className={`text-xs ${curr >= prev ? "text-emerald-600" : "text-red-500"}`}>
+                      {yoyLabel(p)} (war {formatEur(prev, true)})
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+            {foodoraLocations.map((loc) => {
+              const { prev, curr } = foodoraYoy.locYoy[loc] ?? { prev: 0, curr: 0 };
+              if (!prev && !curr) return null;
+              const p = pct(curr, prev);
+              return (
+                <div key={`f-${loc}`} className="rounded-xl border border-ink/10 bg-cream/40 p-3">
+                  <p className="text-xs text-ink/45 mb-1">
+                    <span style={{ color: LOCATION_COLORS[loc] }}>● </span>
+                    {LOCATION_LABELS[loc] ?? loc} (Foodora)
+                  </p>
+                  <p className="text-sm font-semibold">{formatEur(curr, true)}</p>
+                  {p !== null && (
+                    <p className={`text-xs ${curr >= prev ? "text-emerald-600" : "text-red-500"}`}>
+                      {yoyLabel(p)} (war {formatEur(prev, true)})
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-ink/30 mt-3">
+            Datenbasis startet Aug 2025 — vollständiger Jahresvergleich wächst automatisch ab Sep 2026.
+          </p>
+        </div>
+      )}
 
       {/* Trend line chart */}
       <div className="rounded-2xl border border-ink/10 bg-white/70 p-4">

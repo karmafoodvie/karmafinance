@@ -10,6 +10,8 @@ import type {
   SchrankelrMonthly,
   ProjectRevenue,
   BusinessEvent,
+  CategoryStat,
+  CategoryMonthly,
 } from "@/lib/supabase/types";
 
 export async function getLocations(): Promise<LocationRow[]> {
@@ -192,6 +194,28 @@ export async function getTgtgSeries(fromPeriod: string): Promise<TgtgLocationPay
     .order("period_start");
   if (error) throw error;
   return data;
+}
+
+// POS-Kategorie-Aggregationen (Views: category_stats, category_monthly)
+export async function getCategoryStats(): Promise<CategoryStat[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("category_stats")
+    .select("*")
+    .order("revenue_per_day", { ascending: false });
+  if (error) throw error;
+  return data as CategoryStat[];
+}
+
+export async function getCategoryMonthlySeries(from: string): Promise<CategoryMonthly[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("category_monthly")
+    .select("*")
+    .gte("month_start", from)
+    .order("month_start");
+  if (error) throw error;
+  return data as CategoryMonthly[];
 }
 
 // Projekte & Pop-ups — freie, unregelmäßige Umsätze (z.B. VDW-Pop-up am

@@ -135,6 +135,28 @@ export interface BusinessEvent {
   updated_at: string;
 }
 
+// Aggregierte POS-Kategorie-Statistiken (Views: category_stats, category_monthly)
+export interface CategoryStat {
+  category: string;
+  days_served: number;
+  total_qty: number;
+  total_revenue: number;
+  revenue_per_day: number;
+  qty_per_day: number;
+  first_date: string;
+  last_date: string;
+}
+
+export interface CategoryMonthly {
+  month_start: string; // "2025-08-01"
+  category: string;
+  days_served: number;
+  total_qty: number;
+  revenue: number;
+  revenue_per_day: number;
+  qty_per_day: number;
+}
+
 export interface SchrankelrMonthly {
   id: string;
   period_start: string;

@@ -1,10 +1,12 @@
 import { subMonths, endOfMonth, format } from "date-fns";
 import { ACTIVE_LOCATIONS, LOCATIONS, periodStart } from "@/lib/constants";
 import { buildDishData, MENU_ERA_START } from "@/lib/dishes";
+import { getCategoryStats, getCategoryMonthlySeries } from "@/lib/data";
 import { formatEur, formatNumber } from "@/lib/calculations";
 import { StatTile } from "@/components/ui/StatTile";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
+import { KategorienCharts } from "@/components/charts/KategorienCharts";
 
 const CAT_LABEL: Record<string, string> = {
   Curry: "Curry",
@@ -55,11 +57,11 @@ export default async function GerichtePage({
   const activeLocations = selected.length > 0 ? selected : allCodes;
   const allSelected = activeLocations.length === allCodes.length;
 
-  const data = await buildDishData(
-    clampedFrom,
-    toDate,
-    allSelected ? undefined : activeLocations,
-  );
+  const [data, categoryStats, categoryMonthly] = await Promise.all([
+    buildDishData(clampedFrom, toDate, allSelected ? undefined : activeLocations),
+    getCategoryStats(),
+    getCategoryMonthlySeries("2025-01-01"),
+  ]);
 
   const fromLabel = format(new Date(clampedFrom), "dd.MM.yyyy");
   const toLabel = format(new Date(toDate), "dd.MM.yyyy");
@@ -80,6 +82,13 @@ export default async function GerichtePage({
           toMonth={toMonth}
         />
       </div>
+
+      {/* Kategorie-Übersicht — volle Historie, normalisiert */}
+      {categoryStats.length > 0 && (
+        <div className="mb-6">
+          <KategorienCharts stats={categoryStats} monthly={categoryMonthly} />
+        </div>
+      )}
 
       {!data.hasData || !data.hasPlan ? (
         <Card>
