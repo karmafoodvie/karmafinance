@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { format, subMonths } from "date-fns";
 import { MONTH_NAMES, SELECTABLE_YEARS } from "@/lib/constants";
 import { Select } from "@/components/ui/Select";
@@ -18,11 +18,18 @@ const presetButtonClass =
 export function DateRangePicker({ fromYear, fromMonth, toYear, toMonth }: Props) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   function push(fy: number, fm: number, ty: number, tm: number) {
-    router.push(
-      `${pathname}?fromYear=${fy}&fromMonth=${fm}&toYear=${ty}&toMonth=${tm}`,
-    );
+    // Bestehende Filter (Shop-Auswahl, Überkategorie, ...) mitnehmen, statt
+    // die URL neu zu bauen — sonst fällt beim Zeitraumwechsel die
+    // Shop-Auswahl weg.
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("fromYear", String(fy));
+    params.set("fromMonth", String(fm));
+    params.set("toYear", String(ty));
+    params.set("toMonth", String(tm));
+    router.push(`${pathname}?${params.toString()}`);
     // Next.js cacht Server-Component-Seiten client-seitig kurz (Router
     // Cache) — ohne refresh() zeigt die Seite nach einer Zeitraum-Änderung
     // manchmal noch die alten Zahlen, bis der Cache von selbst abläuft.
