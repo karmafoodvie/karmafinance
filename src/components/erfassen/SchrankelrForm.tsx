@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Input, Label, FieldGroup } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { saveSchrankelrMonth } from "@/app/(app)/erfassen/lieferdienste/actions";
+import { saveSchrankelrMonth } from "@/app/(app)/erfassen/schrankerl/actions";
 import { formatEur } from "@/lib/calculations";
 import type { SchrankelrMonthly } from "@/lib/supabase/types";
 

@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/erfassen/standorte", label: "Shops" },
   { href: "/erfassen/shopify", label: "Shopify" },
   { href: "/erfassen/lieferdienste", label: "Lieferdienste" },
+  { href: "/erfassen/schrankerl", label: "Schrankerl" },
   { href: "/erfassen/tgtg", label: "Too Good To Go" },
   { href: "/erfassen/projekte", label: "Projekte & Pop-ups" },
   { href: "/erfassen/ereignisse", label: "Ereignisse" },

@@ -8,16 +8,14 @@ import {
   getWoltPayoutsForPeriod,
   getFoodoraMonthly,
   getFoodoraPayoutsForPeriod,
-  getSchrankelrMonthly,
 } from "@/lib/data";
 import { PeriodPicker } from "@/components/erfassen/PeriodPicker";
 import { WoltForm } from "@/components/erfassen/WoltForm";
 import { FoodoraForm } from "@/components/erfassen/FoodoraForm";
-import { SchrankelrForm } from "@/components/erfassen/SchrankelrForm";
 import { QuickLinks } from "@/components/ui/QuickLinks";
 
 const links = QUICK_LINKS.filter(
-  (l) => l.key === "wolt" || l.key === "foodora" || l.key === "schrankerl",
+  (l) => l.key === "wolt" || l.key === "foodora",
 );
 
 export default async function LieferdienstePage({
@@ -34,11 +32,10 @@ export default async function LieferdienstePage({
   const woltLocations = ACTIVE_LOCATIONS.filter((l) => l.hasWolt);
   const foodoraLocations = ACTIVE_LOCATIONS.filter((l) => l.hasFoodora);
 
-  const [woltPayouts, foodoraMonthly, foodoraPayouts, schrankelrMonthly] = await Promise.all([
+  const [woltPayouts, foodoraMonthly, foodoraPayouts] = await Promise.all([
     getWoltPayoutsForPeriod(period),
     getFoodoraMonthly(period),
     getFoodoraPayoutsForPeriod(period),
-    getSchrankelrMonthly(period),
   ]);
 
   const woltByLocation = Object.fromEntries(
@@ -54,7 +51,7 @@ export default async function LieferdienstePage({
         <div>
           <h1 className="font-heading text-xl">Lieferdienste</h1>
           <p className="text-sm text-ink/50 mt-1">
-            Wolt, Foodora &amp; Schrankerl — {monthLabel(month)} {year}
+            Wolt &amp; Foodora — {monthLabel(month)} {year}
           </p>
         </div>
         <PeriodPicker year={year} month={month} />
@@ -75,10 +72,6 @@ export default async function LieferdienstePage({
           periodStart={period}
           initial={foodoraMonthly}
           initialByLocation={foodoraByLocation}
-        />
-        <SchrankelrForm
-          periodStart={period}
-          initial={schrankelrMonthly}
         />
       </div>
     </div>
