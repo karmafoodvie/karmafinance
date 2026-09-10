@@ -13,6 +13,7 @@ import { PeriodPicker } from "@/components/erfassen/PeriodPicker";
 import { WoltForm } from "@/components/erfassen/WoltForm";
 import { FoodoraForm } from "@/components/erfassen/FoodoraForm";
 import { QuickLinks } from "@/components/ui/QuickLinks";
+import { LieferdiensteTabs } from "@/components/erfassen/LieferdiensteTabs";
 
 const links = QUICK_LINKS.filter(
   (l) => l.key === "wolt" || l.key === "foodora",
@@ -54,7 +55,10 @@ export default async function LieferdienstePage({
             Wolt &amp; Foodora — {monthLabel(month)} {year}
           </p>
         </div>
-        <PeriodPicker year={year} month={month} />
+        <div className="flex items-center gap-3 flex-wrap">
+          <LieferdiensteTabs />
+          <PeriodPicker year={year} month={month} />
+        </div>
       </div>
 
       <div className="mb-6">
