@@ -5221,9 +5221,52 @@ function umsatzSelectGroup(groupKey){
   renderUmsatzContent();
 }
 window.umsatzSelectGroup=umsatzSelectGroup;
+// Ereignis-Formular toggle
+function umsatzToggleEventForm(){
+  const f=document.getElementById('umsatz-event-form');
+  if(!f) return;
+  f.style.display=f.style.display==='none'?'block':'none';
+  if(f.style.display==='block'){
+    // Datum auf heute vorbelegen
+    const today=new Date().toISOString().slice(0,10);
+    const df=document.getElementById('evf-date');
+    if(df&&!df.value) df.value=today;
+    document.getElementById('evf-title')?.focus();
+  }
+}
+window.umsatzToggleEventForm=umsatzToggleEventForm;
+// Ereignis in Supabase speichern
+async function umsatzSaveEvent(){
+  const date=document.getElementById('evf-date')?.value;
+  const title=document.getElementById('evf-title')?.value?.trim();
+  const category=document.getElementById('evf-cat')?.value||'sonstige';
+  const note=document.getElementById('evf-note')?.value?.trim();
+  if(!date||!title){ showToast('Datum und Titel sind Pflichtfelder'); return; }
+  const FARBEN={standort:'#E94E1B',personal:'#7B3FE4',produkt:'#D4FF3F',lieferservice:'#3FA4E4',marketing:'#22C27A',sonstige:'#aaa'};
+  const body={event_date:date, title, category, color:FARBEN[category]||'#E94E1B'};
+  if(note) body.note=note;
+  const btn=document.querySelector('#umsatz-event-form button');
+  if(btn){ btn.textContent='Wird gespeichert…'; btn.disabled=true; }
+  const res=await fetch(`${SUPABASE_URL}/rest/v1/events`,{
+    method:'POST',
+    headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body:JSON.stringify(body)
+  }).catch(()=>null);
+  if(res?.ok||res?.status===201){
+    showToast('✅ Ereignis gespeichert');
+    document.getElementById('evf-title').value='';
+    document.getElementById('evf-note').value='';
+    umsatzToggleEventForm();
+    renderUmsatzContent();
+  } else {
+    showToast('❌ Fehler beim Speichern');
+    if(btn){ btn.textContent='Speichern'; btn.disabled=false; }
+  }
+}
+window.umsatzSaveEvent=umsatzSaveEvent;
 // Mehrserien-Liniendiagramm (SVG, keine externe Lib). Serien werden nach Index (nicht Kalenderdatum) positioniert,
 // damit Vorjahres-Serien (andere Kalenderdaten, aber gleiche Position im Zeitraum) sich sauber überlagern.
-function buildUmsatzMultiLineChartSVG(seriesList){
+function buildUmsatzMultiLineChartSVG(seriesList, events=[]){
   if(!seriesList.length) return `<div style="text-align:center;color:var(--muted);font-size:12px;padding:24px;">Oben mindestens ein Produkt bzw. "Gesamt" wählen</div>`;
   const w=600,h=200,padL=48,padR=10,padT=10,padB=22;
   const innerW=w-padL-padR, innerH=h-padT-padB;
@@ -5244,8 +5287,23 @@ function buildUmsatzMultiLineChartSVG(seriesList){
   });
   const longest=seriesList.reduce((a,b)=>b.points.length>a.points.length?b:a);
   const firstLbl=umsatzFmtDateShort(longest.points[0].date), lastLbl=umsatzFmtDateShort(longest.points[longest.points.length-1].date);
+  // Ereignis-Markierungen (vertikale Linie + Punkt, nur wenn im sichtbaren Bereich)
+  let eventSvg='';
+  if(events.length && longest.points.length>1){
+    const n=longest.points.length;
+    const evStep=innerW/(n-1);
+    const rangeFrom=longest.points[0].date, rangeTo=longest.points[n-1].date;
+    events.filter(ev=>ev.event_date>=rangeFrom&&ev.event_date<=rangeTo).forEach(ev=>{
+      let ci=0,md=Infinity;
+      longest.points.forEach((pt,i)=>{const df=Math.abs(new Date(pt.date+'T12:00:00')-new Date(ev.event_date+'T12:00:00'));if(df<md){md=df;ci=i;}});
+      const x=(padL+ci*evStep).toFixed(1);
+      const c=ev.color||'#E94E1B';
+      eventSvg+=`<g><line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+innerH}" stroke="${c}" stroke-width="1.5" stroke-dasharray="4,2" opacity="0.75"/><circle cx="${x}" cy="${(padT+8).toFixed(1)}" r="5" fill="${c}" opacity="0.9" style="cursor:pointer;"><title>${ev.title} · ${ev.event_date}</title></circle></g>`;
+    });
+  }
   svg+=`<text x="${padL}" y="${h-4}" font-size="9" fill="var(--muted)" text-anchor="start">${firstLbl}</text>
     <text x="${w-padR}" y="${h-4}" font-size="9" fill="var(--muted)" text-anchor="end">${lastLbl}</text>
+    ${eventSvg}
   </svg>`;
   const legend=`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;justify-content:center;">
     ${seriesList.map(s=>`<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--sub);"><span style="width:10px;height:2.5px;background:${s.color};display:inline-block;${s.dashed?'opacity:0.55;':''}"></span><span data-no-translate>${s.label}</span></div>`).join('')}
@@ -5272,7 +5330,10 @@ async function renderUmsatzContent(){
     <button onclick="document.getElementById('umsatz-file-input').click()" id="umsatz-upload-btn" style="width:100%;padding:11px;background:#7B3FE4;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">📊 Odoo-Export (.xlsx) auswählen</button>
   </div>`;
 
-  const rows=await apiAllPages('sales_data?select=*');
+  const [rows, allEvents]=await Promise.all([
+    apiAllPages('sales_data?select=*'),
+    api('events?select=*&order=event_date.asc').catch(()=>[])
+  ]);
   if(!rows?.length){
     html+=`<div class="card" style="padding:2rem;text-align:center;color:var(--muted);font-size:13px;">Noch keine Umsatzdaten — Export oben hochladen.</div>`;
     target.innerHTML=html;
@@ -5376,6 +5437,10 @@ async function renderUmsatzContent(){
   umsatzAllProductNames=allProductNames; // global sync für umsatzSelectGroup
   if(!umsatzChartProducts.length) umsatzChartProducts=['__TOTAL__'];
   const chartSeriesList=umsatzBuildSeriesList(rows, filtered, allProductNames);
+  // Events auf den sichtbaren Zeitraum einschränken
+  const periodFromStr=periodFrom?periodFrom.toISOString().slice(0,10):null;
+  const periodToStr=periodTo?periodTo.toISOString().slice(0,10):null;
+  const visibleEvents=(allEvents||[]).filter(ev=>(!periodFromStr||ev.event_date>=periodFromStr)&&(!periodToStr||ev.event_date<=periodToStr));
   // Gruppen-Buttons: nur Gruppen zeigen, für die es Daten gibt
   const gruppenBtns=UMSATZ_PRODUKT_GRUPPEN.map(grp=>{
     const grpNames=allProductNames.filter(grp.match);
@@ -5393,10 +5458,45 @@ async function renderUmsatzContent(){
       <input type="checkbox" id="umsatz-yoy-check" ${umsatzYoY?'checked':''} onchange="umsatzYoY=this.checked;renderUmsatzContent()">
       <label for="umsatz-yoy-check" style="font-size:11.5px;color:var(--sub);cursor:pointer;">Vorjahreszeitraum einblenden (gestrichelt)</label>
     </div>
-    ${buildUmsatzMultiLineChartSVG(chartSeriesList)}
-    <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:4px;">Tageswerte, bei langen Zeiträumen automatisch auf Wochenwerte verdichtet · max. 6 Produkte gleichzeitig</div>
+    ${buildUmsatzMultiLineChartSVG(chartSeriesList, visibleEvents)}
+    <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:4px;">Tageswerte, bei langen Zeiträumen auf Wochenwerte verdichtet · max. 6 Produkte · ● = Ereignis (hover für Details)</div>
   </div>`;
 
+  // Ereignis-Log
+  const EREIGNIS_FARBEN={standort:'#E94E1B',personal:'#7B3FE4',produkt:'#D4FF3F',lieferservice:'#3FA4E4',marketing:'#22C27A',sonstige:'#aaa'};
+  const EREIGNIS_LABELS={standort:'Standort',personal:'Personal',produkt:'Produkt',lieferservice:'Lieferservice',marketing:'Marketing',sonstige:'Sonstige'};
+  html+=`<div class="section-lbl" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;"><span>📌 Ereignisse</span><button onclick="umsatzToggleEventForm()" style="font-size:10px;padding:4px 10px;border-radius:10px;border:1.5px solid var(--border);background:#fff;color:var(--sub);cursor:pointer;font-weight:600;">+ Neu</button></div>`;
+  html+=`<div id="umsatz-event-form" style="display:none;" class="card"><div style="padding:12px;display:flex;flex-direction:column;gap:8px;">
+    <input type="date" id="evf-date" style="padding:7px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;" placeholder="Datum">
+    <input type="text" id="evf-title" style="padding:7px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;" placeholder="Titel (z.B. Neues Menü gestartet)">
+    <select id="evf-cat" style="padding:7px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;">
+      ${Object.entries(EREIGNIS_LABELS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
+    </select>
+    <input type="text" id="evf-note" style="padding:7px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;" placeholder="Notiz (optional)">
+    <button onclick="umsatzSaveEvent()" style="padding:9px;background:#E94E1B;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;">Speichern</button>
+  </div></div>`;
+  html+=`<div class="card" style="overflow:hidden;">`;
+  if(allEvents?.length){
+    allEvents.slice().reverse().forEach((ev,i,arr)=>{
+      const c=EREIGNIS_FARBEN[ev.category]||'#aaa';
+      const lbl=EREIGNIS_LABELS[ev.category]||ev.category;
+      const [y,m,d]=ev.event_date.split('-');
+      const dateFmt=`${d}.${m}.${y}`;
+      const isInRange=!periodFromStr||ev.event_date>=periodFromStr;
+      html+=`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;${i<arr.length-1?'border-bottom:0.5px solid var(--border);':''}${!isInRange?'opacity:0.4;':''}">
+        <div style="width:9px;height:9px;border-radius:50%;background:${c};flex-shrink:0;margin-top:4px;"></div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;" data-no-translate>${ev.title}</div>
+          ${ev.note?`<div style="font-size:10.5px;color:var(--muted);">${ev.note}</div>`:''}
+          <div style="font-size:10px;color:${c};margin-top:2px;">${lbl}</div>
+        </div>
+        <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;text-align:right;">${dateFmt}</div>
+      </div>`;
+    });
+  } else {
+    html+=`<div style="padding:14px;color:var(--muted);font-size:12px;text-align:center;">Noch keine Ereignisse · oben "+ Neu" drücken</div>`;
+  }
+  html+=`</div>`;
   html+=`<div class="section-lbl" style="margin-top:14px;">🏆 Bestseller nach Umsatz</div>
   <div style="display:flex;gap:6px;margin-bottom:8px;">
     <button onclick="umsatzBestsellerSort='netto';renderUmsatzContent()" style="flex:1;padding:6px;border-radius:8px;border:${umsatzBestsellerSort==='netto'?'1.5px solid #7B3FE4':'1.5px solid var(--border)'};background:${umsatzBestsellerSort==='netto'?'#7B3FE4':'#fff'};color:${umsatzBestsellerSort==='netto'?'#fff':'var(--sub)'};font-size:11px;font-weight:600;cursor:pointer;">Gesamtumsatz</button>
