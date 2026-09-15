@@ -89,7 +89,7 @@ export function B2BKanalChart() {
           width={52}
         />
         <Tooltip
-          formatter={(value: number, name: string) => [fmtFull(value), name]}
+          formatter={(value, name) => [typeof value === "number" ? fmtFull(value) : String(value), String(name)]}
           labelStyle={{ fontWeight: 600, marginBottom: 4 }}
           contentStyle={{
             borderRadius: 8,
