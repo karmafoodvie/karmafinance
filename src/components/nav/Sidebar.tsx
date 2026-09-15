@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/erfassen/tgtg", label: "Too Good To Go" },
   { href: "/erfassen/projekte", label: "Projekte & Pop-ups" },
   { href: "/erfassen/ereignisse", label: "Ereignisse" },
+  { href: "/b2b", label: "B2B Kanäle" },
 ];
 
 export function Sidebar({
