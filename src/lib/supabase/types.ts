@@ -135,28 +135,6 @@ export interface BusinessEvent {
   updated_at: string;
 }
 
-// Aggregierte POS-Kategorie-Statistiken (Views: category_stats, category_monthly)
-export interface CategoryStat {
-  category: string;
-  days_served: number;
-  total_qty: number;
-  total_revenue: number;
-  revenue_per_day: number;
-  qty_per_day: number;
-  first_date: string;
-  last_date: string;
-}
-
-export interface CategoryMonthly {
-  month_start: string; // "2025-08-01"
-  category: string;
-  days_served: number;
-  total_qty: number;
-  revenue: number;
-  revenue_per_day: number;
-  qty_per_day: number;
-}
-
 export interface SchrankelrMonthly {
   id: string;
   period_start: string;
@@ -166,4 +144,31 @@ export interface SchrankelrMonthly {
   payout_amount: number | null;
   updated_by: string | null;
   updated_at: string;
+}
+
+// Auto-importierte Schrankerl Wochenbestellungen (aus Outlook-PDFs via Scheduled Task)
+export interface SchrankelrWeeklySummary {
+  kw: number;
+  year: number;
+  order_number: string | null;
+  order_date: string | null;
+  delivery_date: string | null;
+  total_netto: number | null;
+  total_vat: number | null;
+  total_brutto: number | null;
+  imported_at: string;
+}
+
+export interface SchrankelrWeeklyOrder {
+  id: number;
+  kw: number;
+  year: number;
+  order_number: string | null;
+  order_date: string | null;
+  delivery_date: string | null;
+  product_name: string;
+  quantity: number;
+  unit_price_netto: number;
+  amount_netto: number;
+  imported_at: string;
 }

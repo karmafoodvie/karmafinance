@@ -8,15 +8,16 @@ import {
   getWoltPayoutsForPeriod,
   getFoodoraMonthly,
   getFoodoraPayoutsForPeriod,
+  getSchrankelrWeeklyForMonth,
 } from "@/lib/data";
 import { PeriodPicker } from "@/components/erfassen/PeriodPicker";
 import { WoltForm } from "@/components/erfassen/WoltForm";
 import { FoodoraForm } from "@/components/erfassen/FoodoraForm";
+import { SchrankelrWeeklyView } from "@/components/erfassen/SchrankelrWeeklyView";
 import { QuickLinks } from "@/components/ui/QuickLinks";
-import { LieferdiensteTabs } from "@/components/erfassen/LieferdiensteTabs";
 
 const links = QUICK_LINKS.filter(
-  (l) => l.key === "wolt" || l.key === "foodora",
+  (l) => l.key === "wolt" || l.key === "foodora" || l.key === "schrankerl",
 );
 
 export default async function LieferdienstePage({
@@ -33,10 +34,11 @@ export default async function LieferdienstePage({
   const woltLocations = ACTIVE_LOCATIONS.filter((l) => l.hasWolt);
   const foodoraLocations = ACTIVE_LOCATIONS.filter((l) => l.hasFoodora);
 
-  const [woltPayouts, foodoraMonthly, foodoraPayouts] = await Promise.all([
+  const [woltPayouts, foodoraMonthly, foodoraPayouts, schrankerl] = await Promise.all([
     getWoltPayoutsForPeriod(period),
     getFoodoraMonthly(period),
     getFoodoraPayoutsForPeriod(period),
+    getSchrankelrWeeklyForMonth(period),
   ]);
 
   const woltByLocation = Object.fromEntries(
@@ -52,13 +54,10 @@ export default async function LieferdienstePage({
         <div>
           <h1 className="font-heading text-xl">Lieferdienste</h1>
           <p className="text-sm text-ink/50 mt-1">
-            Wolt &amp; Foodora — {monthLabel(month)} {year}
+            Wolt, Foodora &amp; Schrankerl — {monthLabel(month)} {year}
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <LieferdiensteTabs />
-          <PeriodPicker year={year} month={month} />
-        </div>
+        <PeriodPicker year={year} month={month} />
       </div>
 
       <div className="mb-6">
@@ -76,6 +75,11 @@ export default async function LieferdienstePage({
           periodStart={period}
           initial={foodoraMonthly}
           initialByLocation={foodoraByLocation}
+        />
+        <SchrankelrWeeklyView
+          summaries={schrankerl.summaries}
+          orders={schrankerl.orders}
+          monthLabel={`${monthLabel(month)} ${year}`}
         />
       </div>
     </div>

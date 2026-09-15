@@ -8,10 +8,10 @@ import type {
   FoodoraLocationPayout,
   TgtgLocationPayout,
   SchrankelrMonthly,
+  SchrankelrWeeklySummary,
+  SchrankelrWeeklyOrder,
   ProjectRevenue,
   BusinessEvent,
-  CategoryStat,
-  CategoryMonthly,
 } from "@/lib/supabase/types";
 
 export async function getLocations(): Promise<LocationRow[]> {
@@ -196,28 +196,6 @@ export async function getTgtgSeries(fromPeriod: string): Promise<TgtgLocationPay
   return data;
 }
 
-// POS-Kategorie-Aggregationen (Views: category_stats, category_monthly)
-export async function getCategoryStats(): Promise<CategoryStat[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("category_stats")
-    .select("*")
-    .order("revenue_per_day", { ascending: false });
-  if (error) throw error;
-  return data as CategoryStat[];
-}
-
-export async function getCategoryMonthlySeries(from: string): Promise<CategoryMonthly[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("category_monthly")
-    .select("*")
-    .gte("month_start", from)
-    .order("month_start");
-  if (error) throw error;
-  return data as CategoryMonthly[];
-}
-
 // Projekte & Pop-ups — freie, unregelmäßige Umsätze (z.B. VDW-Pop-up am
 // Standort IST). Absichtlich ohne fromPeriod-Filter: es sind wenige,
 // unregelmäßige Einträge, da lohnt sich kein Zeitraum-Ausschnitt.
@@ -322,4 +300,54 @@ export async function getSchrankelrSeries(fromPeriod: string): Promise<Schrankel
     .order("period_start");
   if (error) throw error;
   return data;
+}
+
+// ── Schrankerl Weekly (auto-importiert via Scheduled Task) ──────────────────
+
+export async function getSchrankelrWeeklyForMonth(
+  periodStart: string,
+): Promise<{ summaries: SchrankelrWeeklySummary[]; orders: SchrankelrWeeklyOrder[] }> {
+  const supabase = await createClient();
+  const d = new Date(periodStart);
+  const year = d.getFullYear();
+  const month = d.getMonth(); // 0-based
+  const monthStart = periodStart; // YYYY-MM-01
+  const monthEnd = new Date(year, month + 1, 0).toISOString().split("T")[0]; // last day
+
+  const { data: summaries, error: se } = await supabase
+    .from("schrankerl_weekly_summary")
+    .select("*")
+    .gte("delivery_date", monthStart)
+    .lte("delivery_date", monthEnd)
+    .order("kw");
+  if (se) throw se;
+
+  if (!summaries?.length) return { summaries: [], orders: [] };
+
+  const kws = summaries.map((s) => s.kw);
+  const { data: orders, error: oe } = await supabase
+    .from("schrankerl_weekly_orders")
+    .select("*")
+    .in("kw", kws)
+    .eq("year", year)
+    .order("kw");
+  if (oe) throw oe;
+
+  return { summaries: summaries ?? [], orders: orders ?? [] };
+}
+
+export async function getSchrankelrWeeklySeries(
+  fromYear: number,
+  limit = 20,
+): Promise<SchrankelrWeeklySummary[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("schrankerl_weekly_summary")
+    .select("*")
+    .gte("year", fromYear)
+    .order("year", { ascending: false })
+    .order("kw", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
 }
