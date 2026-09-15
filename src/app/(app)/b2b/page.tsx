@@ -1,6 +1,7 @@
 import { Card, CardHeader } from "@/components/ui/Card";
 import { formatEur } from "@/lib/calculations";
-import { B2BKanalChart, B2B_DATA, B2B_CHANNELS } from "@/components/b2b/B2BKanalChart";
+import { B2B_DATA, B2B_CHANNELS } from "@/lib/b2bData";
+import { B2BKanalChart } from "@/components/b2b/B2BKanalChart";
 
 // ─── Aggregationen ───────────────────────────────────────────────────────────
 function totals() {
@@ -19,7 +20,6 @@ export default function B2BPage() {
   const kuhlschranke = t.schrankerl + t.ritualVend;
   const onlineRetail = t.gurkerl + t.ototo + t.alfies;
 
-  // letzte 12 Monate für Detailtabelle
   const recent = B2B_DATA.slice(-12);
 
   const channelRows = B2B_CHANNELS.map((ch) => ({
@@ -184,7 +184,7 @@ export default function B2BPage() {
       </Card>
 
       <p className="text-xs text-ink/30 text-center pb-2">
-        Datenstand: Odoo sale.order Export · Für Produktdetails (z.B. Chili Crisp pro Kanal) → sale.order.line Export aus Odoo
+        Datenstand: Odoo sale.order Export · Für Produktdetails → sale.order.line Export aus Odoo
       </p>
     </div>
   );
