@@ -172,3 +172,21 @@ export interface SchrankelrWeeklyOrder {
   amount_netto: number;
   imported_at: string;
 }
+
+// Kategorie-Statistiken für KategorienCharts (aggregiert aus POS-Daten)
+// Normalisiert auf Tage, an denen die Kategorie angeboten wurde.
+export interface CategoryStat {
+  category: string;
+  days_served: number;
+  total_qty: number;
+  qty_per_day: number;
+  total_revenue: number;
+  revenue_per_day: number;
+}
+
+// Monatliche Kategorie-Daten für Trendchart (normalisiert)
+export interface CategoryMonthly {
+  category: string;
+  month_start: string; // YYYY-MM-01
+  revenue_per_day: number;
+}

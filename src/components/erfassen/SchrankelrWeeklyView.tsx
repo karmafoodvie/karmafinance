@@ -35,7 +35,7 @@ export function SchrankelrWeeklyView({ summaries, orders, monthLabel }: Props) {
     return (
       <Card>
         <CardHeader
-          title="Schrankerl"
+          title="B2B"
           subtitle="Automatisch aus Outlook importiert"
         />
         <p className="text-sm text-ink/40 py-2">
@@ -50,7 +50,7 @@ export function SchrankelrWeeklyView({ summaries, orders, monthLabel }: Props) {
   return (
     <Card>
       <CardHeader
-        title="Schrankerl"
+        title="B2B"
         subtitle={`${summaries.length} KW${summaries.length > 1 ? "s" : ""} · Netto ${formatEur(totalNetto, true)} · Brutto ${formatEur(totalBrutto, true)}`}
       />
 

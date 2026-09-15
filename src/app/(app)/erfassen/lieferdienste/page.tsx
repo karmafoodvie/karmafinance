@@ -54,7 +54,7 @@ export default async function LieferdienstePage({
         <div>
           <h1 className="font-heading text-xl">Lieferdienste</h1>
           <p className="text-sm text-ink/50 mt-1">
-            Wolt, Foodora &amp; Schrankerl — {monthLabel(month)} {year}
+            Wolt, Foodora &amp; B2B — {monthLabel(month)} {year}
           </p>
         </div>
         <PeriodPicker year={year} month={month} />
