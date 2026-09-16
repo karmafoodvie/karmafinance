@@ -18,7 +18,9 @@ import {
   CHART_TOOLTIP_BG,
   CHART_TOOLTIP_TEXT,
 } from "@/lib/chartColors";
-import { formatEur, formatPercent } from "@/lib/calculations";
+import { formatEur } from "@/lib/calculations";
+import { YoyBadge } from "@/components/ui/StatTile";
+import type { YoyResult } from "@/lib/vergleich";
 import { Card, CardHeader } from "@/components/ui/Card";
 import type { YearLine, StreamDelta } from "@/lib/dashboard";
 
@@ -39,7 +41,7 @@ interface Props {
     throughLabel: string | null;
     current: number | null;
     previous: number | null;
-    deltaPct: number | null;
+    yoy: YoyResult;
   };
   projectedYearEnd: number | null;
   prevYearFullTotal: number | null;
@@ -82,7 +84,6 @@ export function YearComparison(props: Props) {
   const colorFor = (year: number, idx: number) =>
     year === currentYear ? CURRENT_COLOR : YEAR_COLORS[idx % YEAR_COLORS.length];
 
-  const deltaUp = (ytd.deltaPct ?? 0) >= 0;
 
   return (
     <Card className="mb-4">
@@ -130,15 +131,7 @@ export function YearComparison(props: Props) {
               {formatEur(ytd.previous)}
             </p>
           </div>
-          {ytd.deltaPct != null && (
-            <div
-              className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
-                deltaUp ? "bg-neon/40 text-ink" : "bg-orange/15 text-orange"
-              }`}
-            >
-              {deltaUp ? "▲" : "▼"} {formatPercent(ytd.deltaPct, 1)} vs. Vorjahr
-            </div>
-          )}
+          <YoyBadge yoy={ytd.yoy} />
         </div>
       )}
 
@@ -224,25 +217,21 @@ export function YearComparison(props: Props) {
       )}
 
       {/* Pro-Kanal-Veränderung */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-5 pt-5 border-t border-ink/5">
-        {perStream.map((s) => {
-          const up = (s.deltaPct ?? 0) >= 0;
-          return (
-            <div key={s.key}>
-              <p className="text-xs text-ink/45">{s.label}</p>
-              <p className="font-heading text-base leading-tight mt-0.5">
-                {s.current != null ? formatEur(s.current) : "–"}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-5 pt-5 border-t border-ink/5">
+        {perStream.map((s) => (
+          <div key={s.key}>
+            <p className="text-xs text-ink/45">{s.label}</p>
+            <p className="font-heading text-base leading-tight mt-0.5 mb-1">
+              {s.current != null ? formatEur(s.current) : "–"}
+            </p>
+            <YoyBadge yoy={s.yoy} compact />
+            {s.yoy.partial && s.yoy.pct != null && (
+              <p className="text-[11px] text-ink/35 mt-0.5">
+                nur {s.yoy.prevLabel} vergleichbar
               </p>
-              {s.deltaPct != null ? (
-                <p className={`text-xs font-medium mt-0.5 ${up ? "text-ink/60" : "text-orange"}`}>
-                  {up ? "▲" : "▼"} {formatPercent(s.deltaPct, 0)}
-                </p>
-              ) : (
-                <p className="text-xs text-ink/30 mt-0.5">kein Vorjahr</p>
-              )}
-            </div>
-          );
-        })}
+            )}
+          </div>
+        ))}
       </div>
     </Card>
   );

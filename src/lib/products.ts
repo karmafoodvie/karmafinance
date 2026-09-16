@@ -192,9 +192,12 @@ export async function buildProductData(
   // Für den Trend: Zeitraum halbieren und die Umsätze der beiden Hälften
   // vergleichen. Das zeigt "läuft an / läuft aus" auch dann, wenn kein
   // sauberer Vorjahreswert existiert.
+  // Beide Hälften müssen GLEICH LANG sein. Bei ungerader Monatszahl fiel der
+  // mittlere Monat vorher in die zweite Hälfte — dadurch wurden z.B. 7 Monate
+  // gegen 6 gerechnet und jeder Artikel sah um ~17 % besser aus, als er war.
   const half = Math.floor(months.length / 2);
   const firstHalf = new Set(months.slice(0, half).map((m) => m.periodStart));
-  const secondHalf = new Set(months.slice(half).map((m) => m.periodStart));
+  const secondHalf = new Set(months.slice(months.length - half).map((m) => m.periodStart));
   const halves = new Map<string, { a: number; b: number }>();
   for (const r of rows) {
     const cur = halves.get(r.product_name) ?? { a: 0, b: 0 };

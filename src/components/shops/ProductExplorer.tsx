@@ -332,7 +332,11 @@ export function ProductExplorer({
                 <th className="font-medium py-2 px-3 text-right">Stück</th>
                 <th className="font-medium py-2 px-3 text-right">Umsatz</th>
                 <th className="font-medium py-2 px-3 text-right">Marge</th>
-                <th className="font-medium py-2 pl-3 text-right">Trend</th>
+                {/* Bewusst NICHT "vs. Vorjahr" — das hier ist der Trend
+                    innerhalb des gewählten Zeitraums. Deshalb auch kein
+                    Vorjahres-Badge, damit die beiden Prozentarten optisch
+                    nicht verwechselt werden können. */}
+                <th className="font-medium py-2 pl-3 text-right">Trend im Zeitraum</th>
               </tr>
             </thead>
             <tbody>
@@ -372,7 +376,7 @@ export function ProductExplorer({
                           : "text-orange"
                     }`}
                   >
-                    {s.trendPct == null ? "–" : formatPercent(s.trendPct, 0)}
+                    {s.trendPct == null ? "–" : formatPercent(s.trendPct)}
                   </td>
                 </tr>
               ))}

@@ -6,10 +6,20 @@
 // B2B. Es liegt nur im selben Schema, wird aber überall getrennt ausgewiesen
 // (channel_group). B2B = Handel + Kühlschränke.
 
-import { format, addMonths } from "date-fns";
-import { de } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/server";
-import { sum, yoyPercent } from "@/lib/calculations";
+import { sum } from "@/lib/calculations";
+import {
+  compareYoy,
+  monthsInRange,
+  shiftYear,
+  type MonthBucket,
+  type YoyResult,
+} from "@/lib/vergleich";
+
+// Zeitraum- und Vorjahreslogik kommt zentral aus @/lib/vergleich, damit die
+// B2B-Seite exakt dieselben Regeln anwendet wie Dashboard und Lieferdienste.
+export { monthsInRange as monthsBetween, shiftYear };
+export type { MonthBucket };
 
 export type ChannelGroup = "handel" | "vending" | "catering";
 
@@ -84,42 +94,12 @@ export async function getB2BMonthlyForPeriod(
   return (data ?? []) as B2BChannelMonthly[];
 }
 
-// ─── Monatsraster ───────────────────────────────────────────────────────────
-
-export interface MonthBucket {
-  periodStart: string;
-  label: string;
-}
-
-/** Baut die Monatsliste von..bis. Safety-Guard gegen Endlosschleifen. */
-export function monthsBetween(fromPeriod: string, toPeriod: string): MonthBucket[] {
-  const out: MonthBucket[] = [];
-  let cursor = new Date(`${fromPeriod}T00:00:00`);
-  const end = new Date(`${toPeriod}T00:00:00`);
-  let guard = 0;
-  while (cursor <= end && guard < 600) {
-    out.push({
-      periodStart: format(cursor, "yyyy-MM-01"),
-      label: format(cursor, "MMM yy", { locale: de }),
-    });
-    cursor = addMonths(cursor, 1);
-    guard += 1;
-  }
-  return out;
-}
-
-/** Verschiebt eine Periode um n Jahre — für den Vorjahresvergleich. */
-export function shiftYear(periodStart: string, years: number): string {
-  const [y, m] = periodStart.split("-");
-  return `${Number(y) + years}-${m}-01`;
-}
-
 // ─── Aggregation ────────────────────────────────────────────────────────────
 
 export interface ChannelTotal extends B2BChannel {
   total: number;
   prevTotal: number | null;
-  yoy: number | null;
+  yoy: YoyResult;
 }
 
 export interface B2BChartPoint {
@@ -137,14 +117,14 @@ export interface B2BView {
   chart: B2BChartPoint[];
   kpis: {
     b2bTotal: number;
-    b2bPrev: number | null;
-    b2bYoy: number | null;
+    b2bYoy: YoyResult;
     handelTotal: number;
-    handelYoy: number | null;
+    handelYoy: YoyResult;
     vendingTotal: number;
-    vendingYoy: number | null;
+    vendingYoy: YoyResult;
     cateringTotal: number;
-    cateringYoy: number | null;
+    cateringYoy: YoyResult;
+    /** Gibt es für den Vorjahreszeitraum überhaupt vergleichbare Monate? */
     hasPrevYear: boolean;
   };
 }
@@ -161,9 +141,8 @@ export async function buildB2BView(range: {
   from: string;
   to: string;
 }): Promise<B2BView> {
-  const months = monthsBetween(range.from, range.to);
+  const months = monthsInRange(range.from, range.to);
   const prevFrom = shiftYear(range.from, -1);
-  const prevTo = shiftYear(range.to, -1);
 
   // Ein Query über den gesamten Bereich inkl. Vorjahr — spart einen Roundtrip.
   const [channels, rows] = await Promise.all([
@@ -175,49 +154,35 @@ export async function buildB2BView(range: {
   for (const r of rows) {
     byKey.set(keyOf(r.channel_key, r.period_start), r.revenue_net ?? 0);
   }
+  const erfassteMonate = new Set(rows.map((r) => r.period_start));
 
   const valueFor = (channelKey: string, periodStart: string): number =>
     byKey.get(keyOf(channelKey, periodStart)) ?? 0;
 
-  // Gibt es für den Vorjahreszeitraum überhaupt Daten? Sonst zeigen wir
-  // "kein Vorjahr" statt einer irreführenden -100%-Veränderung.
-  const prevMonths = months.map((m) => shiftYear(m.periodStart, -1));
-  const hasPrevYear = rows.some((r) => prevMonths.includes(r.period_start));
+  // Ein Monat ist vergleichbar, wenn für ihn überhaupt B2B-Zahlen erfasst
+  // sind. Fehlende Monate fließen NICHT als 0 € in den Vergleich ein.
+  const hasData = (p: string) => erfassteMonate.has(p);
 
-  const totalsFor = (
-    filter: (c: B2BChannel) => boolean,
-    periods: string[],
-  ): number =>
-    sum(
-      channels
-        .filter(filter)
-        .flatMap((c) => periods.map((p) => valueFor(c.channel_key, p))),
-    );
+  const summeFor = (filter: (c: B2BChannel) => boolean) => (p: string) =>
+    sum(channels.filter(filter).map((c) => valueFor(c.channel_key, p)));
 
   const curPeriods = months.map((m) => m.periodStart);
+  const prevMonths = curPeriods.map((p) => shiftYear(p, -1));
+  const hasPrevYear = prevMonths.some((p) => hasData(p));
 
   const channelTotals: ChannelTotal[] = channels.map((c) => {
     const total = sum(curPeriods.map((p) => valueFor(c.channel_key, p)));
-    const prevTotal = hasPrevYear
-      ? sum(prevMonths.map((p) => valueFor(c.channel_key, p)))
-      : null;
-    return { ...c, total, prevTotal, yoy: yoyPercent(total, prevTotal) };
+    const yoy = compareYoy(months, (p) => valueFor(c.channel_key, p), { hasData });
+    return { ...c, total, prevTotal: yoy.previous, yoy };
   });
 
   const byGroup = (g: ChannelGroup) =>
     channelTotals.filter((c) => c.channel_group === g);
 
-  const groupTotal = (g: ChannelGroup, periods: string[]) =>
-    totalsFor((c) => c.channel_group === g, periods);
+  const groupSum = (g: ChannelGroup) =>
+    sum(curPeriods.map((p) => summeFor((c) => c.channel_group === g)(p)));
 
-  const b2bTotal = totalsFor((c) => isB2B(c.channel_group), curPeriods);
-  const b2bPrev = hasPrevYear
-    ? totalsFor((c) => isB2B(c.channel_group), prevMonths)
-    : null;
-
-  const handelTotal = groupTotal("handel", curPeriods);
-  const vendingTotal = groupTotal("vending", curPeriods);
-  const cateringTotal = groupTotal("catering", curPeriods);
+  const b2bTotal = sum(curPeriods.map((p) => summeFor((c) => isB2B(c.channel_group))(p)));
 
   const chart: B2BChartPoint[] = months.map((m) => {
     const point: B2BChartPoint = { label: m.label };
@@ -225,12 +190,8 @@ export async function buildB2BView(range: {
       point[c.channel_key] = valueFor(c.channel_key, m.periodStart);
     }
     const prevPeriod = shiftYear(m.periodStart, -1);
-    point.VorjahrB2B = hasPrevYear
-      ? sum(
-          channels
-            .filter((c) => isB2B(c.channel_group))
-            .map((c) => valueFor(c.channel_key, prevPeriod)),
-        )
+    point.VorjahrB2B = hasData(prevPeriod)
+      ? summeFor((c) => isB2B(c.channel_group))(prevPeriod)
       : null;
     return point;
   });
@@ -245,20 +206,13 @@ export async function buildB2BView(range: {
     chart,
     kpis: {
       b2bTotal,
-      b2bPrev,
-      b2bYoy: yoyPercent(b2bTotal, b2bPrev),
-      handelTotal,
-      handelYoy: hasPrevYear
-        ? yoyPercent(handelTotal, groupTotal("handel", prevMonths))
-        : null,
-      vendingTotal,
-      vendingYoy: hasPrevYear
-        ? yoyPercent(vendingTotal, groupTotal("vending", prevMonths))
-        : null,
-      cateringTotal,
-      cateringYoy: hasPrevYear
-        ? yoyPercent(cateringTotal, groupTotal("catering", prevMonths))
-        : null,
+      b2bYoy: compareYoy(months, summeFor((c) => isB2B(c.channel_group)), { hasData }),
+      handelTotal: groupSum("handel"),
+      handelYoy: compareYoy(months, summeFor((c) => c.channel_group === "handel"), { hasData }),
+      vendingTotal: groupSum("vending"),
+      vendingYoy: compareYoy(months, summeFor((c) => c.channel_group === "vending"), { hasData }),
+      cateringTotal: groupSum("catering"),
+      cateringYoy: compareYoy(months, summeFor((c) => c.channel_group === "catering"), { hasData }),
       hasPrevYear,
     },
   };

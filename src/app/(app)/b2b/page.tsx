@@ -1,6 +1,7 @@
 import { subMonths } from "date-fns";
 import { periodStart, monthLabel } from "@/lib/constants";
-import { formatEur, formatPercent } from "@/lib/calculations";
+import { formatEur, shareOf } from "@/lib/calculations";
+import { yoyErklaerung } from "@/lib/vergleich";
 import {
   buildB2BView,
   getB2BMonthlyForPeriod,
@@ -8,7 +9,7 @@ import {
   type ChannelTotal,
 } from "@/lib/b2b";
 import { getSchrankelrWeeklyForMonth } from "@/lib/data";
-import { StatTile } from "@/components/ui/StatTile";
+import { StatTile, YoyBadge } from "@/components/ui/StatTile";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import { B2BKanalChart } from "@/components/b2b/B2BKanalChart";
@@ -73,20 +74,14 @@ function KanalTabelle({
                     />
                   </div>
                   <span className="text-ink/50 text-xs tabular-nums">
-                    {gesamt !== 0 ? ((r.total / gesamt) * 100).toFixed(1) : "0.0"}%
+                    {shareOf(r.total, gesamt)}
                   </span>
                 </div>
               </td>
               {hasPrevYear && (
-                <td className="py-2 pr-4 text-right tabular-nums text-xs">
-                  <span className="text-ink/45">{formatEur(r.prevTotal)}</span>
-                  {r.yoy != null && (
-                    <span
-                      className={`ml-2 font-semibold ${r.yoy >= 0 ? "text-ink/70" : "text-orange"}`}
-                    >
-                      {formatPercent(r.yoy, 0)}
-                    </span>
-                  )}
+                <td className="py-2 pr-4 text-right tabular-nums text-xs whitespace-nowrap">
+                  <span className="text-ink/45 mr-2">{formatEur(r.prevTotal)}</span>
+                  <YoyBadge yoy={r.yoy} compact />
                 </td>
               )}
               <td className="py-2 text-right tabular-nums font-medium">
@@ -195,28 +190,28 @@ export default async function B2BPage({
           value={formatEur(kpis.b2bTotal)}
           sub="Handel + Kühlschränke"
           yoy={kpis.b2bYoy}
-          info={`Nettoumsatz aller B2B-Kanäle über ${rangeLabel}: Gurkerl, Ototo, Alfies, Billa/REWE/Ja!Natürlich (Handel) sowie Schrankerl und Ritual Vend (Kühlschränke). Catering ist bewusst NICHT enthalten — das ist ein eigenes Geschäft.`}
+          info={`Nettoumsatz aller B2B-Kanäle über ${rangeLabel}: Gurkerl, Ototo, Alfies, Billa/REWE/Ja!Natürlich (Handel) sowie Schrankerl und Ritual Vend (Kühlschränke). Catering ist bewusst NICHT enthalten — das ist ein eigenes Geschäft. ${yoyErklaerung(kpis.b2bYoy, "Vorjahresvergleich")}`}
         />
         <StatTile
           label="Handel"
           value={formatEur(kpis.handelTotal)}
           sub="Gurkerl · Ototo · Alfies · Billa"
           yoy={kpis.handelYoy}
-          info={`Verkauf verpackter Produkte an den Handel über ${rangeLabel}.`}
+          info={`Verkauf verpackter Produkte an den Handel über ${rangeLabel}. ${yoyErklaerung(kpis.handelYoy, "Vorjahresvergleich")}`}
         />
         <StatTile
           label="Kühlschränke"
           value={formatEur(kpis.vendingTotal)}
           sub="Schrankerl + Ritual Vend"
           yoy={kpis.vendingYoy}
-          info={`Ready2Eat-Gerichte über die Smart-Fridge-Partner, ${rangeLabel}.`}
+          info={`Ready2Eat-Gerichte über die Smart-Fridge-Partner, ${rangeLabel}. ${yoyErklaerung(kpis.vendingYoy, "Vorjahresvergleich")}`}
         />
         <StatTile
           label="Catering"
           value={formatEur(kpis.cateringTotal)}
           sub="eigenes Geschäft"
           yoy={kpis.cateringYoy}
-          info={`Catering & Events über ${rangeLabel}. Wird hier getrennt ausgewiesen und zählt NICHT zum B2B-Umsatz, weil es ein eigenes Geschäft ist.`}
+          info={`Catering & Events über ${rangeLabel}. Wird hier getrennt ausgewiesen und zählt NICHT zum B2B-Umsatz, weil es ein eigenes Geschäft ist. ${yoyErklaerung(kpis.cateringYoy, "Vorjahresvergleich")}`}
         />
       </div>
 
@@ -288,9 +283,9 @@ export default async function B2BPage({
         getrennt geführt, weil es ein eigenes Geschäft mit eigener Kalkulation
         ist.
         {" · "}
-        Vorjahresvergleich heißt: derselbe Zeitraum ein Jahr früher. Steht dort
-        &bdquo;kein Vorjahr&ldquo;, liegen für diesen Zeitraum noch keine Werte
-        in der Datenbank.
+        Jeder Prozentwert nennt sein Vergleichsfenster. Verglichen werden nur
+        Monate, für die in beiden Jahren Zahlen erfasst sind; der laufende,
+        noch nicht abgeschlossene Monat bleibt außen vor.
       </p>
     </div>
   );

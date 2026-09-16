@@ -57,6 +57,9 @@ export default async function TgtgPage({
   const rangeStartLabel = months[0]?.label ?? "";
   const rangeEndLabel = months[months.length - 1]?.label ?? "";
   const isSingleMonth = months.length <= 1;
+  const rangeLabel = isSingleMonth
+    ? rangeEndLabel
+    : `${rangeStartLabel} – ${rangeEndLabel}`;
   const entryByLocation = Object.fromEntries(
     entryPayouts.map((p) => [p.location_code, p]),
   );
@@ -67,7 +70,7 @@ export default async function TgtgPage({
         <div>
           <h1 className="font-heading text-xl">Too Good To Go</h1>
           <p className="text-sm text-ink/50 mt-1">
-            Kennzahlen oben beziehen sich auf {rangeEndLabel}
+            Kennzahlen oben sind die Summe über {rangeLabel}
           </p>
         </div>
         <DateRangePicker
@@ -96,25 +99,25 @@ export default async function TgtgPage({
               value={formatEur(kpis.currentNet)}
               sub="tatsächliche Auszahlung"
               yoy={kpis.netYoy}
-              info={`Brutto minus TGTG-Reservierungsgebühr für ${rangeEndLabel} — das ist der Betrag, den TGTG tatsächlich auszahlt.`}
+              info={`Brutto minus TGTG-Reservierungsgebühr über ${rangeLabel} — das ist der Betrag, den TGTG tatsächlich auszahlt.`}
             />
             <StatTile
               label="Brutto"
               value={formatEur(kpis.currentGross)}
               sub="Verkaufswert"
-              info={`Verkaufswert aller geretteten Sackerl für ${rangeEndLabel}, vor Abzug der TGTG-Gebühr.`}
+              info={`Verkaufswert aller geretteten Sackerl über ${rangeLabel}, vor Abzug der TGTG-Gebühr.`}
             />
             <StatTile
               label="TGTG-Gebühr"
               value={formatEur(kpis.currentFee)}
               sub="inkl. USt."
-              info={`Reservierungsgebühr, die TGTG für ${rangeEndLabel} einbehält (inkl. 20 % USt.).`}
+              info={`Reservierungsgebühr, die TGTG über ${rangeLabel} einbehält (inkl. 20 % USt.).`}
             />
             <StatTile
               label="Gerettete Sackerl"
               value={formatNumber(kpis.currentMeals)}
               yoy={kpis.mealsYoy}
-              info={`Anzahl geretteter Überraschungssackerl über alle Standorte für ${rangeEndLabel}.`}
+              info={`Anzahl geretteter Überraschungssackerl über alle Standorte über ${rangeLabel}.`}
             />
           </div>
 
@@ -190,7 +193,7 @@ export default async function TgtgPage({
         bis Juni 2026 noch laufenden Umsatz — deshalb hier weiterhin
         gelistet.
         {" · "}
-        YoY = Veränderung ggü. demselben Monat im Vorjahr.
+        Jeder Prozentwert nennt sein Vergleichsfenster. Verglichen werden nur Monate, für die in beiden Jahren TGTG-Zahlen erfasst sind; der laufende Monat bleibt außen vor.
         {" · "}
         Mit &bdquo;von–bis&ldquo; oben kannst du jeden beliebigen Zeitraum
         anzeigen.

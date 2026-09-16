@@ -37,10 +37,38 @@ export function formatEur(value: number | null | undefined, precise = false): st
   return precise ? eurFormatterPrecise.format(value) : eurFormatter.format(value);
 }
 
-export function formatPercent(value: number | null | undefined, digits = 1): string {
+// Prozentformat für die ganze App: österreichisch (Komma als Dezimaltrenner,
+// schmales Leerzeichen vor dem %), immer EINE Nachkommastelle und bei
+// Veränderungen immer mit Vorzeichen. Vorher gab es vier verschiedene
+// Schreibweisen ("+49.1%", "+49%", "12.3 %", "2.34%") — nebeneinander in
+// derselben Tabelle sah das aus wie unterschiedliche Kennzahlen.
+const percentChangeFormatter = new Intl.NumberFormat("de-AT", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+  signDisplay: "exceptZero",
+});
+
+const percentShareFormatter = new Intl.NumberFormat("de-AT", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+/** Veränderung in Prozent, z.B. "+12,4 %" / "−3,8 %". */
+export function formatPercent(value: number | null | undefined): string {
   if (value == null) return "–";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(digits)}%`;
+  return `${percentChangeFormatter.format(value)} %`;
+}
+
+/** Anteil in Prozent (ohne Vorzeichen), z.B. "55,5 %". */
+export function formatShare(value: number | null | undefined): string {
+  if (value == null) return "–";
+  return `${percentShareFormatter.format(value)} %`;
+}
+
+/** Anteil von Teil an Ganzem, direkt als "55,5 %". */
+export function shareOf(part: number, total: number): string {
+  if (!total) return "–";
+  return formatShare((part / total) * 100);
 }
 
 export function formatNumber(value: number | null | undefined): string {
