@@ -29,6 +29,11 @@ export interface CombinedRevenuePoint {
   Lieferdienste: number;
   TGTG: number;
   Projekte: number;
+  // B2B = Handel (Gurkerl, Ototo, Alfies, Billa) + Kühlschränke (Schrankerl,
+  // Ritual Vend). Catering läuft bewusst als eigener Strom, weil es ein
+  // eigenes Geschäft ist.
+  B2B: number;
+  Catering: number;
   // Gesamtumsatz desselben Monats im Vorjahr — null, wenn dafür noch keine
   // Daten in der DB liegen (z.B. ganz am Anfang der Historie).
   VorjahrGesamt: number | null;
@@ -40,6 +45,8 @@ const STREAM_KEYS: Array<keyof Omit<CombinedRevenuePoint, "label" | "VorjahrGesa
   "Lieferdienste",
   "TGTG",
   "Projekte",
+  "B2B",
+  "Catering",
 ];
 
 const STREAM_COLORS: Record<string, string> = {
@@ -48,6 +55,8 @@ const STREAM_COLORS: Record<string, string> = {
   Lieferdienste: CHART_SERIES[2],
   TGTG: CHART_SERIES[3],
   Projekte: CHART_SERIES[4],
+  B2B: CHART_SERIES[5],
+  Catering: CHART_SERIES[6],
 };
 
 function CombinedTooltip({ active, payload, label }: TooltipContentProps) {

@@ -11,9 +11,10 @@ const NAV_ITEMS = [
   { href: "/erfassen/shopify", label: "Shopify" },
   { href: "/erfassen/lieferdienste", label: "Lieferdienste" },
   { href: "/erfassen/tgtg", label: "Too Good To Go" },
+  { href: "/b2b", label: "B2B" },
+  { href: "/produkte", label: "Produkte" },
   { href: "/erfassen/projekte", label: "Projekte & Pop-ups" },
   { href: "/erfassen/ereignisse", label: "Ereignisse" },
-  { href: "/b2b", label: "B2B Kanäle" },
 ];
 
 export function Sidebar({

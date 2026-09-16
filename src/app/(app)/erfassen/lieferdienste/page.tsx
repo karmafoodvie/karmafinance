@@ -8,16 +8,15 @@ import {
   getWoltPayoutsForPeriod,
   getFoodoraMonthly,
   getFoodoraPayoutsForPeriod,
-  getSchrankelrWeeklyForMonth,
 } from "@/lib/data";
 import { PeriodPicker } from "@/components/erfassen/PeriodPicker";
 import { WoltForm } from "@/components/erfassen/WoltForm";
 import { FoodoraForm } from "@/components/erfassen/FoodoraForm";
-import { SchrankelrWeeklyView } from "@/components/erfassen/SchrankelrWeeklyView";
 import { QuickLinks } from "@/components/ui/QuickLinks";
 
+// Nur echte Lieferdienste. Schrankerl & Co. sind B2B und leben unter /b2b.
 const links = QUICK_LINKS.filter(
-  (l) => l.key === "wolt" || l.key === "foodora" || l.key === "schrankerl",
+  (l) => l.key === "wolt" || l.key === "foodora",
 );
 
 export default async function LieferdienstePage({
@@ -34,11 +33,10 @@ export default async function LieferdienstePage({
   const woltLocations = ACTIVE_LOCATIONS.filter((l) => l.hasWolt);
   const foodoraLocations = ACTIVE_LOCATIONS.filter((l) => l.hasFoodora);
 
-  const [woltPayouts, foodoraMonthly, foodoraPayouts, schrankerl] = await Promise.all([
+  const [woltPayouts, foodoraMonthly, foodoraPayouts] = await Promise.all([
     getWoltPayoutsForPeriod(period),
     getFoodoraMonthly(period),
     getFoodoraPayoutsForPeriod(period),
-    getSchrankelrWeeklyForMonth(period),
   ]);
 
   const woltByLocation = Object.fromEntries(
@@ -54,7 +52,7 @@ export default async function LieferdienstePage({
         <div>
           <h1 className="font-heading text-xl">Lieferdienste</h1>
           <p className="text-sm text-ink/50 mt-1">
-            Wolt, Foodora &amp; B2B — {monthLabel(month)} {year}
+            Wolt &amp; Foodora — {monthLabel(month)} {year}
           </p>
         </div>
         <PeriodPicker year={year} month={month} />
@@ -76,12 +74,13 @@ export default async function LieferdienstePage({
           initial={foodoraMonthly}
           initialByLocation={foodoraByLocation}
         />
-        <SchrankelrWeeklyView
-          summaries={schrankerl.summaries}
-          orders={schrankerl.orders}
-          monthLabel={`${monthLabel(month)} ${year}`}
-        />
       </div>
+
+      <p className="text-xs text-ink/35 mt-6">
+        Schrankerl, Ritual Vend, Gurkerl, Ototo, Alfies und Billa findest du
+        jetzt unter <span className="font-medium">B2B</span> im Menü — das sind
+        Vertriebskanäle, keine Lieferdienste.
+      </p>
     </div>
   );
 }

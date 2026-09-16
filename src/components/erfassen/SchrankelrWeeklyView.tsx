@@ -35,8 +35,8 @@ export function SchrankelrWeeklyView({ summaries, orders, monthLabel }: Props) {
     return (
       <Card>
         <CardHeader
-          title="B2B"
-          subtitle="Automatisch aus Outlook importiert"
+          title="Schrankerl Wochenbestellungen"
+          subtitle="Automatisch aus den Bestell-PDFs importiert"
         />
         <p className="text-sm text-ink/40 py-2">
           Keine Bestellungen mit Lieferung im {monthLabel} gefunden.
@@ -50,7 +50,7 @@ export function SchrankelrWeeklyView({ summaries, orders, monthLabel }: Props) {
   return (
     <Card>
       <CardHeader
-        title="B2B"
+        title="Schrankerl Wochenbestellungen"
         subtitle={`${summaries.length} KW${summaries.length > 1 ? "s" : ""} · Netto ${formatEur(totalNetto, true)} · Brutto ${formatEur(totalBrutto, true)}`}
       />
 

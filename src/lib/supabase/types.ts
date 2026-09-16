@@ -190,3 +190,71 @@ export interface CategoryMonthly {
   month_start: string; // YYYY-MM-01
   revenue_per_day: number;
 }
+
+// ─── B2B-Vertriebskanäle ────────────────────────────────────────────────────
+// Stammdaten der Kanäle. channel_group trennt Handel (Produktverkauf an
+// Gurkerl/Ototo/Alfies/Billa), Kühlschränke (Schrankerl, Ritual Vend) und
+// Catering. Catering ist ein EIGENES Geschäft und zählt nicht zum B2B-Umsatz,
+// liegt hier nur im selben Schema.
+export interface B2BChannelRow {
+  channel_key: string;
+  label: string;
+  channel_group: "handel" | "vending" | "catering";
+  color: string;
+  sort_order: number;
+  active: boolean;
+}
+
+// Nettoumsatz je Kanal und Monat, Quelle: Odoo sale.order Export.
+export interface B2BChannelMonthlyRow {
+  id: string;
+  channel_key: string;
+  period_start: string; // YYYY-MM-01
+  revenue_net: number | null;
+  note: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Kanalübergreifende Produktverkäufe ─────────────────────────────────────
+// Produktverkäufe im Webshop je Monat. ACHTUNG: orders = Anzahl Bestellungen,
+// die das Produkt enthalten — Shopify liefert auf Produktebene keine
+// Stückzahl. Niemals mit POS-Stückzahlen addieren.
+export interface ShopifyProductMonthly {
+  id: string;
+  period_start: string;
+  product_title: string;
+  orders: number | null;
+  net_sales: number | null;
+  gross_sales: number | null;
+  updated_at: string;
+}
+
+// Vereinheitlicht Produktnamen über Kanäle hinweg, z.B. Shopify
+// "Mango Chili Hot Sauce" -> Kassa "Mango Chilli Hot Sauce".
+export interface ProductAlias {
+  source_channel: string; // 'pos' | 'shopify' | 'schrankerl'
+  source_name: string;
+  canonical_name: string;
+  updated_at: string;
+}
+
+// Zuordnung Produkt -> Produktgruppe (z.B. "Retail & Merch").
+export interface ProductGroupMap {
+  product_name: string;
+  product_group: string;
+  product_type: string | null;
+  updated_at: string;
+}
+
+// Zeile der View public.product_sales_monthly: POS, Shopify und Schrankerl
+// vereint. quantity und orders sind nie gleichzeitig gesetzt.
+export interface ProductSalesMonthly {
+  channel: "stores" | "shopify" | "schrankerl" | "b2b_pos" | "catering";
+  product_name: string;
+  period_start: string;
+  quantity: number | null;
+  orders: number | null;
+  revenue: number | null;
+}
