@@ -1,3 +1,0 @@
-module.exports=[65595,a=>{"use strict";var b=a.i(37936),c=a.i(18558),d=a.i(16349);async function e(a){let b=await (0,d.createClient)(),e=a.values.map(b=>({channel_key:b.channelKey,period_start:a.periodStart,revenue_net:b.revenueNet})),{error:f}=await b.from("b2b_channel_monthly").upsert(e,{onConflict:"channel_key,period_start"});return f?{ok:!1,message:f.message}:((0,c.revalidatePath)("/b2b"),(0,c.revalidatePath)("/dashboard"),{ok:!0})}(0,a.i(13095).ensureServerEntryExports)([e]),(0,b.registerServerReference)(e,"4029e549dea3b5e02b5aece6b5b34542e6fed56a63",null),a.s([],58052),a.i(58052),a.s(["4029e549dea3b5e02b5aece6b5b34542e6fed56a63",0,e],65595)}];
-
-//# sourceMappingURL=_next-internal_server_app_%28app%29_b2b_page_actions_04h14hc.js.map
