@@ -1,21 +1,10 @@
-import { subMonths } from "date-fns";
-import {
-  ACTIVE_LOCATIONS,
-  LOCATIONS,
-  periodStart,
-  monthLabel,
-} from "@/lib/constants";
+import { ACTIVE_LOCATIONS, LOCATIONS, periodStart, monthLabel } from "@/lib/constants";
 import { getLocationMonthlyForPeriod } from "@/lib/data";
-import {
-  buildProductData,
-  buildGroupByLocation,
-  getProductCategories,
-  PRODUCT_GROUPS,
-} from "@/lib/products";
+import { buildGesamtstrom } from "@/lib/products";
+import { resolveShopsParams, type ShopsSearchParams } from "@/lib/shopsParams";
 import { PeriodPicker } from "@/components/erfassen/PeriodPicker";
 import { LocationMonthlyForm } from "@/components/erfassen/LocationMonthlyForm";
-import { ProductExplorer } from "@/components/shops/ProductExplorer";
-import { GroupByStore } from "@/components/shops/GroupByStore";
+import { GesamtstromOverview } from "@/components/shops/GesamtstromOverview";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatTile } from "@/components/ui/StatTile";
 import { formatEur, formatNumber } from "@/lib/calculations";
@@ -23,36 +12,14 @@ import { formatEur, formatNumber } from "@/lib/calculations";
 export default async function ShopsPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    fromYear?: string;
-    fromMonth?: string;
-    toYear?: string;
-    toMonth?: string;
-    year?: string;
-    month?: string;
-    locs?: string;
-    cat?: string;
-    grp?: string;
-    typ?: string;
-    storegrp?: string;
-    storetyp?: string;
-  }>;
+  searchParams: Promise<ShopsSearchParams & { year?: string; month?: string }>;
 }) {
   const params = await searchParams;
   const now = new Date();
-  const defaultFrom = subMonths(now, 11);
 
-  // Zeitraum für die Produktauswertung oben.
-  const fromYear = Number(params.fromYear) || defaultFrom.getFullYear();
-  const fromMonth = Number(params.fromMonth) || defaultFrom.getMonth() + 1;
-  const toYear = Number(params.toYear) || now.getFullYear();
-  const toMonth = Number(params.toMonth) || now.getMonth() + 1;
-
-  let fromPeriod = periodStart(fromYear, fromMonth);
-  let toPeriod = periodStart(toYear, toMonth);
-  if (fromPeriod > toPeriod) {
-    [fromPeriod, toPeriod] = [toPeriod, fromPeriod];
-  }
+  // Zeitraum und Shop-Auswahl kommen aus der gemeinsamen Filterleiste
+  // (ShopsNav) — gleiche Auswertung wie in allen anderen Shops-Reitern.
+  const p = resolveShopsParams(params);
 
   // Separater Monat für die Umsatz-Erfassung weiter unten.
   const entryYear = Number(params.year) || now.getFullYear();
@@ -60,49 +27,12 @@ export default async function ShopsPage({
   const entryPeriod = periodStart(entryYear, entryMonth);
   const prevYearPeriod = periodStart(entryYear - 1, entryMonth);
 
-  // Shop-Mehrfachauswahl: leer/fehlend = alle Shops. Nur gültige Codes
-  // zulassen, damit kein Unfug aus der URL durchrutscht.
-  const allLocationCodes = LOCATIONS.map((l) => l.code);
-  const selectedLocations = (params.locs ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter((c) => allLocationCodes.includes(c as (typeof allLocationCodes)[number]));
-  const activeLocations =
-    selectedLocations.length > 0 ? selectedLocations : allLocationCodes;
-  const allSelected = activeLocations.length === allLocationCodes.length;
-  const activeCategory = params.cat ?? "";
-
-  // Überkategorie-Filter (nur gültige Werte zulassen).
-  const groupList: string[] = [...PRODUCT_GROUPS];
-  const activeGroup = groupList.includes(params.grp ?? "") ? (params.grp as string) : "";
-  const activeType =
-    activeGroup === "Hauptgerichte" && (params.typ === "Classic" || params.typ === "Special")
-      ? params.typ
-      : "";
-
-  // "Pro Standort"-Ansicht: eigene Gruppe, Standard = Lunch Combos.
-  const storeGroup = groupList.includes(params.storegrp ?? "")
-    ? (params.storegrp as string)
-    : "Lunch Combos";
-  const storeType =
-    storeGroup === "Hauptgerichte" && (params.storetyp === "Classic" || params.storetyp === "Special")
-      ? params.storetyp
-      : "";
-
-  const [product, categories, byStore, entries, prevYearEntries] = await Promise.all([
-    buildProductData(
-      { from: fromPeriod, to: toPeriod },
-      allSelected ? undefined : activeLocations,
-      activeCategory || undefined,
-      activeGroup || undefined,
-      activeType || undefined,
-    ),
-    getProductCategories(),
-    buildGroupByLocation(
-      { from: fromPeriod, to: toPeriod },
-      storeGroup,
-      ACTIVE_LOCATIONS.map((l) => ({ code: l.code, shortName: l.shortName })),
-      storeType || undefined,
+  const [gesamt, entries, prevYearEntries] = await Promise.all([
+    buildGesamtstrom(
+      { from: p.fromPeriod, to: p.toPeriod },
+      // alle Standorte inkl. historischer (z.B. Neustiftgasse) in der Auswertung
+      LOCATIONS.map((l) => ({ code: l.code, shortName: l.shortName })),
+      p.locationFilter,
     ),
     getLocationMonthlyForPeriod(entryPeriod),
     getLocationMonthlyForPeriod(prevYearPeriod),
@@ -115,58 +45,60 @@ export default async function ShopsPage({
     prevYearEntries.map((e) => [e.location_code, e.revenue_net]),
   );
 
-  const rangeStartLabel = product.months[0]?.label ?? "";
-  const rangeEndLabel = product.months[product.months.length - 1]?.label ?? "";
+  const rangeStartLabel = gesamt.months[0]?.label ?? "";
+  const rangeEndLabel = gesamt.months[gesamt.months.length - 1]?.label ?? "";
+  const rangeLabel = `${rangeStartLabel} – ${rangeEndLabel}`;
+
+  // Aktuelle Filter für den Sprung in die Details (Produkte-Reiter).
+  const detailQuery = new URLSearchParams(
+    Object.entries({
+      fromYear: params.fromYear,
+      fromMonth: params.fromMonth,
+      toYear: params.toYear,
+      toMonth: params.toMonth,
+      locs: params.locs,
+    }).filter((e): e is [string, string] => Boolean(e[1])),
+  ).toString();
 
   return (
     <div>
-      {product.hasData ? (
+      {gesamt.hasData ? (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
             <StatTile
               label="Umsatz"
-              value={formatEur(product.totals.revenue)}
-              sub={`${rangeStartLabel} – ${rangeEndLabel}`}
-              info="Summe aller Produktumsätze im gewählten Zeitraum, inkl. Rabattzeilen (die sind negativ). Entspricht dem Shop-Umsatz aus dem Kassensystem."
+              value={formatEur(gesamt.totals.revenue)}
+              sub={rangeLabel}
+              info="Summe aller Produktumsätze der gewählten Shops im gewählten Zeitraum, inkl. Rabattzeilen (die sind negativ). Entspricht dem Shop-Umsatz aus dem Kassensystem."
+            />
+            <StatTile
+              label="Ø Umsatz pro Monat"
+              value={gesamt.avgPerMonth != null ? formatEur(gesamt.avgPerMonth) : "–"}
+              sub={`über ${gesamt.monthsWithData} Monat${gesamt.monthsWithData === 1 ? "" : "e"} mit Daten`}
+              info="Gesamtumsatz geteilt durch die Monate, für die Produktdaten vorliegen — leere Monate drücken den Schnitt nicht."
             />
             <StatTile
               label="Verkaufte Stück"
-              value={formatNumber(Math.round(product.totals.quantity))}
+              value={formatNumber(Math.round(gesamt.totals.quantity))}
               sub="alle Produkte"
-              info="Summe der verkauften Mengen über alle Produkte und Standorte im gewählten Zeitraum."
+              info="Summe der verkauften Mengen über alle Produkte und gewählten Standorte im gewählten Zeitraum."
             />
             <StatTile
               label="Marge"
-              value={formatEur(product.totals.margin)}
+              value={formatEur(gesamt.totals.margin)}
               sub="laut Kassensystem"
               info="Summe der im Odoo-POS hinterlegten Margen. Hängt davon ab, wie gepflegt die Einkaufspreise im Kassensystem sind."
             />
           </div>
 
-          <ProductExplorer
-            summaries={product.summaries}
-            trendProducts={product.trendProducts}
-            revenueTrend={product.revenueTrend}
-            quantityTrend={product.quantityTrend}
-            locations={LOCATIONS}
-            categories={categories}
-            groupTotals={product.groupTotals}
-            activeLocations={activeLocations}
-            activeCategory={activeCategory}
-            activeGroup={activeGroup}
-            activeType={activeType}
-          />
-
-          <GroupByStore
-            group={storeGroup}
-            groups={groupList}
-            activeType={storeType}
-            storeKeys={byStore.storeKeys}
-            revenueTrend={byStore.revenueTrend}
-            quantityTrend={byStore.quantityTrend}
-            storeTotals={byStore.storeTotals}
-            hasData={byStore.hasData}
-            rangeLabel={`${rangeStartLabel} – ${rangeEndLabel}`}
+          <GesamtstromOverview
+            chartGroups={gesamt.chartGroups}
+            revenueTrend={gesamt.revenueTrend}
+            quantityTrend={gesamt.quantityTrend}
+            groupRows={gesamt.groupRows}
+            storeRows={gesamt.storeRows}
+            rangeLabel={rangeLabel}
+            detailQuery={detailQuery}
           />
         </>
       ) : (

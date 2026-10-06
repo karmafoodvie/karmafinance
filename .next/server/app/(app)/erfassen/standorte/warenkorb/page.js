@@ -1,7 +1,7 @@
 var R=require("../../../../../chunks/ssr/[turbopack]_runtime.js")("server/app/(app)/erfassen/standorte/warenkorb/page.js")
 R.c("server/chunks/ssr/[root-of-the-server]__1j_4ke6._.js")
 R.c("server/chunks/ssr/_0h2c96k._.js")
-R.c("server/chunks/ssr/src_1mpbn3k._.js")
+R.c("server/chunks/ssr/src_17awmzl._.js")
 R.c("server/chunks/ssr/node_modules_next_dist_1n3w9lb._.js")
 R.c("server/chunks/ssr/src_lib_1q40cip._.js")
 R.c("server/chunks/ssr/_16w3d10._.js")

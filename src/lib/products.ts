@@ -332,3 +332,128 @@ export async function buildGroupByLocation(
     hasData: rows.length > 0,
   };
 }
+
+export interface GesamtstromGroupRow {
+  group: string;
+  revenue: number;
+  quantity: number;
+  /** Anteil am Gesamtumsatz in Prozent (Rabatte/Sonstiges mitgerechnet) */
+  share: number;
+  /** Durchschnittlicher Umsatz pro verkauftem Stück */
+  avgPrice: number | null;
+}
+
+export interface GesamtstromStoreRow {
+  label: string;
+  revenue: number;
+  quantity: number;
+  share: number;
+}
+
+export interface GesamtstromPoint {
+  label: string;
+  [group: string]: string | number;
+}
+
+// Gesamtstrom: ALLE Produkte über die gewählten Shops, zusammengefasst nach
+// Überkategorie und Standort. Das ist die Übersicht — Details pro Produkt
+// stehen im Reiter "Produkte".
+export async function buildGesamtstrom(
+  range: DateRange,
+  locations: { code: string; shortName: string }[],
+  locationCodes?: string[],
+) {
+  const months = monthsInRange(range.from, range.to);
+  const [rows, groupMap] = await Promise.all([
+    getPosProducts(range.from, range.to, locationCodes),
+    getProductGroupMap(),
+  ]);
+
+  const revByGroup = new Map<string, number>();
+  const qtyByGroup = new Map<string, number>();
+  const revByGroupMonth = new Map<string, number>(); // "gruppe|period"
+  const qtyByGroupMonth = new Map<string, number>();
+  const revByStore = new Map<string, number>();
+  const qtyByStore = new Map<string, number>();
+  const revByMonth = new Map<string, number>();
+  const codeToName = new Map(locations.map((l) => [l.code, l.shortName]));
+
+  for (const r of rows) {
+    const g = groupOf(groupMap, r.product_name).group;
+    const rev = Number(r.revenue ?? 0);
+    const qty = Number(r.quantity ?? 0);
+    revByGroup.set(g, (revByGroup.get(g) ?? 0) + rev);
+    qtyByGroup.set(g, (qtyByGroup.get(g) ?? 0) + qty);
+    const k = `${g}|${r.period_start}`;
+    revByGroupMonth.set(k, (revByGroupMonth.get(k) ?? 0) + rev);
+    qtyByGroupMonth.set(k, (qtyByGroupMonth.get(k) ?? 0) + qty);
+    revByMonth.set(r.period_start, (revByMonth.get(r.period_start) ?? 0) + rev);
+    const store = codeToName.get(r.location_code) ?? r.location_code;
+    revByStore.set(store, (revByStore.get(store) ?? 0) + rev);
+    qtyByStore.set(store, (qtyByStore.get(store) ?? 0) + qty);
+  }
+
+  const totalRevenue = Array.from(revByGroup.values()).reduce((a, b) => a + b, 0);
+  const totalQuantity = Array.from(qtyByGroup.values()).reduce((a, b) => a + b, 0);
+
+  const known: string[] = [...PRODUCT_GROUPS];
+  const groupRows: GesamtstromGroupRow[] = Array.from(revByGroup.keys())
+    .sort((a, b) => {
+      const ia = known.indexOf(a);
+      const ib = known.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    })
+    .map((group) => {
+      const revenue = revByGroup.get(group) ?? 0;
+      const quantity = qtyByGroup.get(group) ?? 0;
+      return {
+        group,
+        revenue,
+        quantity,
+        share: totalRevenue !== 0 ? (revenue / totalRevenue) * 100 : 0,
+        avgPrice: quantity > 0 ? revenue / quantity : null,
+      };
+    });
+
+  // Für den gestapelten Chart nur Gruppen mit positivem Umsatz — Rabatte
+  // stehen negativ drin und sind in den Summen bereits abgezogen.
+  const chartGroups = groupRows.filter((g) => g.revenue > 0).map((g) => g.group);
+
+  function buildTrend(source: Map<string, number>): GesamtstromPoint[] {
+    return months.map((m) => {
+      const point: GesamtstromPoint = { label: m.label };
+      for (const g of chartGroups) {
+        point[g] = Math.round(Math.max(source.get(`${g}|${m.periodStart}`) ?? 0, 0) * 100) / 100;
+      }
+      return point;
+    });
+  }
+
+  const storeRows: GesamtstromStoreRow[] = Array.from(revByStore.entries())
+    .map(([label, revenue]) => ({
+      label,
+      revenue,
+      quantity: qtyByStore.get(label) ?? 0,
+      share: totalRevenue !== 0 ? (revenue / totalRevenue) * 100 : 0,
+    }))
+    .sort((a, b) => b.revenue - a.revenue);
+
+  const margin = rows.reduce((acc, r) => acc + Number(r.margin ?? 0), 0);
+
+  // Monate mit Daten, damit der Durchschnitt pro Monat nicht durch leere
+  // Monate gedrückt wird.
+  const monthsWithData = months.filter((m) => (revByMonth.get(m.periodStart) ?? 0) !== 0).length;
+
+  return {
+    months,
+    chartGroups,
+    revenueTrend: buildTrend(revByGroupMonth),
+    quantityTrend: buildTrend(qtyByGroupMonth),
+    groupRows,
+    storeRows,
+    totals: { revenue: totalRevenue, quantity: totalQuantity, margin },
+    avgPerMonth: monthsWithData > 0 ? totalRevenue / monthsWithData : null,
+    monthsWithData,
+    hasData: rows.length > 0,
+  };
+}
