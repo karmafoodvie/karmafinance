@@ -10,6 +10,7 @@ import { CombinedRevenueChart } from "@/components/charts/CombinedRevenueChart";
 import { LocationBarChart } from "@/components/charts/LocationBarChart";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 import { YearComparison } from "@/components/dashboard/YearComparison";
+import { FinanceChatWidget } from "@/components/FinanceChatWidget";
 
 export default async function DashboardPage({
   searchParams,
@@ -193,6 +194,7 @@ export default async function DashboardPage({
         Kennzahlen sind dann die Summe über genau diese Monate, der Überblick
         zeigt sie einzeln.
       </p>
+      <FinanceChatWidget page="dashboard" periodStart={toPeriod} />
     </div>
   );
 }

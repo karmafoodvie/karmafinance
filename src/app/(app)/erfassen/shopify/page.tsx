@@ -3,6 +3,8 @@ import { getShopifyMonthly } from "@/lib/data";
 import { PeriodPicker } from "@/components/erfassen/PeriodPicker";
 import { ShopifyMonthlyForm } from "@/components/erfassen/ShopifyMonthlyForm";
 import { QuickLinks } from "@/components/ui/QuickLinks";
+import { ShopifyAnalytics } from "@/components/ShopifyAnalytics";
+import { FinanceChatWidget } from "@/components/FinanceChatWidget";
 
 const links = QUICK_LINKS.filter((l) => l.key === "shopify");
 
@@ -39,11 +41,17 @@ export default async function ShopifyPage({
         <QuickLinks links={links} />
       </div>
 
-      <ShopifyMonthlyForm
+      <ShopifyAnalytics
         periodStart={period}
-        initial={entry}
-        prevYearActual={prevYearEntry?.payout_amount ?? null}
+        manualEntry={
+          <ShopifyMonthlyForm
+            periodStart={period}
+            initial={entry}
+            prevYearActual={prevYearEntry?.payout_amount ?? null}
+          />
+        }
       />
+      <FinanceChatWidget page="shopify" periodStart={period} />
     </div>
   );
 }
