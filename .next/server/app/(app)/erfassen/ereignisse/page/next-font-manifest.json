@@ -1,0 +1,10 @@
+{
+  "pages": {},
+  "app": {
+    "[project]/src/app/(app)/erfassen/ereignisse/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ]
+  },
+  "appUsingSizeAdjust": true,
+  "pagesUsingSizeAdjust": false
+}

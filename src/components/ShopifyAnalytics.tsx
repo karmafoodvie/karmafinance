@@ -25,10 +25,15 @@ import {
   DataStatus,
   ShopifyDailyRow,
   ShopifyKpiRow,
+  ShopifyMonthlyPoint,
   ShopifyTopProduct,
   fetchShopifyDailySeries,
   fetchShopifyDataStatus,
   fetchShopifyKpis,
+  fetchShopifyMonthlySeries,
+  fetchShopifyRangeKpis,
+  fetchShopifyRangeStatus,
+  fetchShopifyTopProductsRange,
   fetchShopifyTopProducts,
   formatCompare,
   formatEUR,
@@ -115,6 +120,55 @@ function LineChart({ points, formatY }: { points: { label: string; value: number
   );
 }
 
+function shortMonth(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("de-AT", { month: "short", year: "2-digit" }).replace(".", "");
+}
+
+/** Monatsbalken (aktuell) mit Punkt fuer denselben Monat im Vorjahr. */
+function MonthlyBarChart({ points }: { points: ShopifyMonthlyPoint[] }) {
+  const width = 640;
+  const height = 190;
+  const padX = 28;
+  const padTop = 22;
+  const padBottom = 26;
+  if (points.length === 0) {
+    return <div style={{ color: COLORS.ink, opacity: 0.5, fontSize: 13, padding: 20 }}>Keine Daten für diesen Zeitraum.</div>;
+  }
+  const values = points.flatMap((p) => [Number(p.revenue_gross) || 0, Number(p.prev_revenue_gross) || 0]);
+  const max = Math.max(...values, 1);
+  const slot = (width - padX * 2) / points.length;
+  const barW = Math.min(36, slot * 0.6);
+  const y = (v: number) => height - padBottom - (v / max) * (height - padTop - padBottom);
+  const labelEvery = Math.ceil(points.length / 12);
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", maxWidth: width }}>
+      <line x1={padX} y1={height - padBottom} x2={width - padX} y2={height - padBottom} stroke={COLORS.ink} strokeOpacity={0.15} />
+      {points.map((pt, i) => {
+        const cx = padX + slot * i + slot / 2;
+        const cur = pt.revenue_gross;
+        return (
+          <g key={pt.period_start}>
+            {cur !== null && cur !== undefined && (
+              <rect x={cx - barW / 2} y={y(Number(cur))} width={barW} height={height - padBottom - y(Number(cur))} rx={3} fill={COLORS.orange} />
+            )}
+            {pt.prev_revenue_gross !== null && pt.prev_revenue_gross !== undefined && (
+              <circle cx={cx} cy={y(Number(pt.prev_revenue_gross))} r={3.5} fill={COLORS.cream} stroke={COLORS.ink} strokeWidth={2} />
+            )}
+            {i % labelEvery === 0 && (
+              <text x={cx} y={height - 8} fontSize={10} fill={COLORS.ink} opacity={0.6} textAnchor="middle">
+                {shortMonth(pt.period_start)}
+              </text>
+            )}
+          </g>
+        );
+      })}
+      <text x={padX} y={12} fontSize={10} fill={COLORS.ink} opacity={0.5}>
+        max {formatEUR(max)} · Balken = Zeitraum, Punkt = Vorjahresmonat
+      </text>
+    </svg>
+  );
+}
+
 function KpiTile({ row }: { row: ShopifyKpiRow }) {
   const displayValue =
     row.unit === "EUR" ? formatEUR(row.value) : row.unit === "percent" ? formatPercent(row.value) : row.value?.toLocaleString("de-AT") ?? "–";
@@ -144,16 +198,21 @@ function KpiTile({ row }: { row: ShopifyKpiRow }) {
 }
 
 export function ShopifyAnalytics({
-  periodStart,
+  fromPeriod,
+  toPeriod,
   manualEntry,
 }: {
-  periodStart: string; // YYYY-MM-01, kommt vom PeriodPicker der Seite
+  fromPeriod: string; // YYYY-MM-01, Beginn des gewählten Zeitraums
+  toPeriod: string; // YYYY-MM-01, Ende (inklusive); gleich wie fromPeriod = Einzelmonat
   manualEntry?: ReactNode; // bestehendes Eingabeformular, eingeklappt
 }) {
+  const isRange = fromPeriod !== toPeriod;
+  const periodStart = fromPeriod;
   const [compareMode, setCompareMode] = useState<CompareMode>("yoy");
   const [chartView, setChartView] = useState<"day" | "week">("day");
   const [kpis, setKpis] = useState<ShopifyKpiRow[]>([]);
   const [daily, setDaily] = useState<ShopifyDailyRow[]>([]);
+  const [monthly, setMonthly] = useState<ShopifyMonthlyPoint[]>([]);
   const [topProducts, setTopProducts] = useState<ShopifyTopProduct[]>([]);
   const [status, setStatus] = useState<{ status: DataStatus; detail: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -164,23 +223,32 @@ export function ShopifyAnalytics({
     Promise.resolve().then(() => {
       if (!cancelled) setLoading(true);
     });
-    Promise.all([
-      fetchShopifyKpis(periodStart, compareMode),
-      fetchShopifyDailySeries(periodStart),
-      fetchShopifyTopProducts(periodStart, 5),
-      fetchShopifyDataStatus(periodStart),
-    ]).then(([k, d, p, s]) => {
+    const load = isRange
+      ? Promise.all([
+          fetchShopifyRangeKpis(fromPeriod, toPeriod),
+          fetchShopifyMonthlySeries(fromPeriod, toPeriod),
+          fetchShopifyTopProductsRange(fromPeriod, toPeriod, 5),
+          fetchShopifyRangeStatus(fromPeriod, toPeriod),
+        ]).then(([k, mo, p, st]) => ({ k, d: [] as ShopifyDailyRow[], mo, p, st }))
+      : Promise.all([
+          fetchShopifyKpis(periodStart, compareMode),
+          fetchShopifyDailySeries(periodStart),
+          fetchShopifyTopProducts(periodStart, 5),
+          fetchShopifyDataStatus(periodStart),
+        ]).then(([k, d, p, st]) => ({ k, d, mo: [] as ShopifyMonthlyPoint[], p, st }));
+    load.then(({ k, d, mo, p, st }) => {
       if (cancelled) return;
       setKpis(k);
       setDaily(d);
+      setMonthly(mo);
       setTopProducts(p);
-      setStatus(s);
+      setStatus(st);
       setLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [periodStart, compareMode]);
+  }, [fromPeriod, toPeriod, isRange, periodStart, compareMode]);
 
   const chartPoints =
     chartView === "day"
@@ -193,6 +261,7 @@ export function ShopifyAnalytics({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <h2 style={{ fontFamily: "Boldonse, system-ui, sans-serif", fontSize: 22, margin: 0 }}>Webshop-Analyse</h2>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {!isRange && (
           <div role="group" aria-label="Vergleichsmodus" style={{ display: "inline-flex", gap: 6 }}>
             {(["yoy", "mom"] as CompareMode[]).map((mode) => (
               <button
@@ -214,6 +283,7 @@ export function ShopifyAnalytics({
               </button>
             ))}
           </div>
+          )}
         </div>
       </div>
 
@@ -252,7 +322,8 @@ export function ShopifyAnalytics({
       {/* Chart */}
       <div style={{ background: COLORS.cream, border: `2px solid ${COLORS.ink}`, borderRadius: 16, padding: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <strong style={{ fontSize: 14 }}>Umsatz brutto im Zeitverlauf</strong>
+          <strong style={{ fontSize: 14 }}>{isRange ? "Umsatz brutto pro Monat" : "Umsatz brutto im Zeitverlauf"}</strong>
+          {!isRange && (
           <div role="group" aria-label="Chart-Auflösung" style={{ display: "inline-flex", gap: 6 }}>
             {(["day", "week"] as const).map((v) => (
               <button
@@ -274,8 +345,9 @@ export function ShopifyAnalytics({
               </button>
             ))}
           </div>
+          )}
         </div>
-        <LineChart points={chartPoints} formatY={formatEUR} />
+        {isRange ? <MonthlyBarChart points={monthly} /> : <LineChart points={chartPoints} formatY={formatEUR} />}
       </div>
 
       {/* Top-Produkte */}
@@ -292,7 +364,7 @@ export function ShopifyAnalytics({
             ))}
             {topProducts.length === 0 && (
               <tr>
-                <td style={{ padding: "6px 0", opacity: 0.5 }}>Keine Produktdaten für diesen Monat.</td>
+                <td style={{ padding: "6px 0", opacity: 0.5 }}>{isRange ? "Keine Produktdaten für diesen Zeitraum." : "Keine Produktdaten für diesen Monat."}</td>
               </tr>
             )}
           </tbody>

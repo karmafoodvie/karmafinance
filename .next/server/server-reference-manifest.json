@@ -1,0 +1,105 @@
+{
+  "node": {
+    "4029e549dea3b5e02b5aece6b5b34542e6fed56a63": {
+      "workers": {
+        "app/(app)/b2b/page": {
+          "moduleId": 65595,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "filename": "src/app/(app)/b2b/actions.ts",
+      "exportedName": "saveB2BMonth"
+    },
+    "40786f781149812d69a5ca9acd3d687f1a7015a5e7": {
+      "workers": {
+        "app/(app)/erfassen/ereignisse/page": {
+          "moduleId": 97388,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "filename": "src/app/(app)/erfassen/ereignisse/actions.ts",
+      "exportedName": "saveBusinessEvent"
+    },
+    "40e3a9dcf86f59237f80b985c387666c5f22399f1b": {
+      "workers": {
+        "app/(app)/erfassen/ereignisse/page": {
+          "moduleId": 97388,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "filename": "src/app/(app)/erfassen/ereignisse/actions.ts",
+      "exportedName": "deleteBusinessEvent"
+    },
+    "404df43d1776c14f49df9af6c3fedb0fd0b419793a": {
+      "workers": {
+        "app/(app)/erfassen/projekte/page": {
+          "moduleId": 64880,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "filename": "src/app/(app)/erfassen/projekte/actions.ts",
+      "exportedName": "saveProjectRevenue"
+    },
+    "403931984d899a3cf775a343f3a178feec2e93d05f": {
+      "workers": {
+        "app/(app)/erfassen/projekte/page": {
+          "moduleId": 64880,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "filename": "src/app/(app)/erfassen/projekte/actions.ts",
+      "exportedName": "deleteProjectRevenue"
+    },
+    "40472962df2ca028a5b22ddc198787f14c9aa0eeb1": {
+      "workers": {
+        "app/(app)/erfassen/schrankerl/page": {
+          "moduleId": 69092,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "filename": "src/app/(app)/erfassen/lieferdienste/actions.ts",
+      "exportedName": "saveSchrankelrMonth"
+    },
+    "40de84a6264aa5610969bcfb64ae33e89fbe005102": {
+      "workers": {
+        "app/(app)/erfassen/shopify/page": {
+          "moduleId": 10878,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "filename": "src/app/(app)/erfassen/shopify/actions.ts",
+      "exportedName": "saveShopifyMonthly"
+    },
+    "40c578769319955a5cbba996f9df1756e2c533b963": {
+      "workers": {
+        "app/(app)/erfassen/standorte/page": {
+          "moduleId": 82769,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "filename": "src/app/(app)/erfassen/standorte/actions.ts",
+      "exportedName": "saveLocationMonthly"
+    },
+    "4006f6b00876b01ef6ba824441e0c39323d32954b8": {
+      "workers": {
+        "app/(app)/erfassen/tgtg/page": {
+          "moduleId": 76010,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "filename": "src/app/(app)/erfassen/tgtg/actions.ts",
+      "exportedName": "saveTgtgMonth"
+    }
+  },
+  "edge": {},
+  "encryptionKey": "MRCG7LWXH5KswG7eQ2SBd7GaoZqvBrgg4WSTHLXxsic="
+}

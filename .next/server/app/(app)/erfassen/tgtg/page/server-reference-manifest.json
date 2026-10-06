@@ -1,0 +1,16 @@
+{
+  "node": {
+    "4006f6b00876b01ef6ba824441e0c39323d32954b8": {
+      "workers": {
+        "app/(app)/erfassen/tgtg/page": {
+          "moduleId": 76010,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "saveTgtgMonth",
+      "filename": "src/app/(app)/erfassen/tgtg/actions.ts"
+    }
+  },
+  "edge": {}
+}

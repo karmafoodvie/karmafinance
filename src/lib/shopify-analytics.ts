@@ -100,6 +100,53 @@ export async function fetchShopifyDataStatus(
   return data[0] as { status: DataStatus; detail: string };
 }
 
+export interface ShopifyMonthlyPoint {
+  period_start: string;
+  revenue_gross: number | null;
+  orders: number | null;
+  prev_revenue_gross: number | null;
+}
+
+/** KPI-Leiste ueber einen Zeitraum (von/bis = erster Tag des Monats, beide inklusive). */
+export async function fetchShopifyRangeKpis(from: string, to: string): Promise<ShopifyKpiRow[]> {
+  const { data, error } = await supabase.rpc("get_shopify_range_kpis", { p_from: from, p_to: to });
+  if (error) {
+    console.error("get_shopify_range_kpis fehlgeschlagen:", error.message);
+    return [];
+  }
+  return (data ?? []) as ShopifyKpiRow[];
+}
+
+export async function fetchShopifyMonthlySeries(from: string, to: string): Promise<ShopifyMonthlyPoint[]> {
+  const { data, error } = await supabase.rpc("get_shopify_monthly_series", { p_from: from, p_to: to });
+  if (error) {
+    console.error("get_shopify_monthly_series fehlgeschlagen:", error.message);
+    return [];
+  }
+  return (data ?? []) as ShopifyMonthlyPoint[];
+}
+
+export async function fetchShopifyTopProductsRange(from: string, to: string, limit = 5): Promise<ShopifyTopProduct[]> {
+  const { data, error } = await supabase.rpc("get_shopify_top_products_range", {
+    p_from: from,
+    p_to: to,
+    p_limit: limit,
+  });
+  if (error) {
+    console.error("get_shopify_top_products_range fehlgeschlagen:", error.message);
+    return [];
+  }
+  return (data ?? []) as ShopifyTopProduct[];
+}
+
+export async function fetchShopifyRangeStatus(from: string, to: string): Promise<{ status: DataStatus; detail: string }> {
+  const { data, error } = await supabase.rpc("get_shopify_range_status", { p_from: from, p_to: to });
+  if (error || !data?.length) {
+    return { status: "missing", detail: "Status konnte nicht geladen werden." };
+  }
+  return data[0] as { status: DataStatus; detail: string };
+}
+
 export function formatEUR(value: number | null): string {
   if (value === null || value === undefined) return "–";
   return value.toLocaleString("de-AT", { style: "currency", currency: "EUR" });

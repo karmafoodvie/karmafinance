@@ -1,0 +1,67 @@
+{
+  "app": {
+    "[project]/src/app/(app)/b2b/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/dashboard/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/erfassen/ereignisse/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/erfassen/gerichte/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/erfassen/lieferdienste/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/erfassen/projekte/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/erfassen/schrankerl/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/erfassen/shopify/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/erfassen/standorte/gerichte/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/erfassen/standorte/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/erfassen/standorte/produkte/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/erfassen/standorte/warenkorb/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/erfassen/tgtg/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/lieferdienste/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/(app)/produkte/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/_not-found/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/login/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/mfa-challenge/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/mfa-setup/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ],
+    "[project]/src/app/page": [
+      "static/media/Geist_Variable-s.p.0mrjj4bg00-he.woff2"
+    ]
+  },
+  "appUsingSizeAdjust": true,
+  "pages": {},
+  "pagesUsingSizeAdjust": false
+}

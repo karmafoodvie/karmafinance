@@ -1,0 +1,16 @@
+{
+  "node": {
+    "4029e549dea3b5e02b5aece6b5b34542e6fed56a63": {
+      "workers": {
+        "app/(app)/b2b/page": {
+          "moduleId": 65595,
+          "async": false,
+          "codeHash": null
+        }
+      },
+      "exportedName": "saveB2BMonth",
+      "filename": "src/app/(app)/b2b/actions.ts"
+    }
+  },
+  "edge": {}
+}
