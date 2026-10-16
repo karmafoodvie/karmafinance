@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/erfassen/tgtg", label: "Too Good To Go" },
   { href: "/b2b", label: "B2B" },
   { href: "/produkte", label: "Produkte" },
+  { href: "/wareneinsatz", label: "Wareneinsatz" },
   { href: "/erfassen/projekte", label: "Projekte & Pop-ups" },
   { href: "/erfassen/ereignisse", label: "Ereignisse" },
 ];
