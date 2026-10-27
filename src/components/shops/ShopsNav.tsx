@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import clsx from "clsx";
-import { LOCATIONS } from "@/lib/constants";
+import { ACTIVE_LOCATIONS, LOCATIONS } from "@/lib/constants";
 import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
 
 const TABS = [
@@ -30,7 +30,10 @@ export function ShopsNav() {
   const toYear = Number(searchParams.get("toYear")) || now.getFullYear();
   const toMonth = Number(searchParams.get("toMonth")) || now.getMonth() + 1;
 
-  const allCodes = LOCATIONS.map((l) => l.code);
+  const includeArchive = searchParams.get("archiv") === "1";
+  const poolLocations = includeArchive ? LOCATIONS : ACTIVE_LOCATIONS;
+  const hasArchive = LOCATIONS.length > ACTIVE_LOCATIONS.length;
+  const allCodes = poolLocations.map((l) => l.code);
   const selected = (searchParams.get("locs") ?? "")
     .split(",")
     .map((s) => s.trim())
@@ -51,6 +54,15 @@ export function ShopsNav() {
 
   function selectAll() {
     const params = new URLSearchParams(query);
+    params.delete("locs");
+    router.push(`${pathname}?${params.toString()}`);
+    router.refresh();
+  }
+
+  function toggleArchive() {
+    const params = new URLSearchParams(query);
+    if (includeArchive) params.delete("archiv");
+    else params.set("archiv", "1");
     params.delete("locs");
     router.push(`${pathname}?${params.toString()}`);
     router.refresh();
@@ -111,7 +123,7 @@ export function ShopsNav() {
         >
           Alle
         </button>
-        {LOCATIONS.map((l) => {
+        {poolLocations.map((l) => {
           const on = activeSet.has(l.code);
           return (
             <button
@@ -128,6 +140,20 @@ export function ShopsNav() {
             </button>
           );
         })}
+        {hasArchive && (
+          <button
+            onClick={toggleArchive}
+            className={clsx(
+              "rounded-full px-3 py-1 text-xs font-medium transition-colors cursor-pointer border border-dashed",
+              includeArchive
+                ? "border-ink/40 text-ink"
+                : "border-ink/20 text-ink/40 hover:text-ink/70",
+            )}
+            title="Geschlossene Shops (Neustiftgasse) in die Auswertung einbeziehen"
+          >
+            {includeArchive ? "Archiv ausblenden" : "+ Archiv"}
+          </button>
+        )}
       </div>
     </div>
   );

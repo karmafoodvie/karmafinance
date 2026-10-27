@@ -1,4 +1,4 @@
-import { ACTIVE_LOCATIONS, LOCATIONS } from "@/lib/constants";
+import { ACTIVE_LOCATIONS } from "@/lib/constants";
 import {
   buildProductData,
   buildGroupByLocation,
@@ -119,7 +119,7 @@ export default async function ProduktePage({
         trendProducts={product.trendProducts}
         revenueTrend={product.revenueTrend}
         quantityTrend={product.quantityTrend}
-        locations={LOCATIONS}
+        locations={p.poolLocations}
         categories={categories}
         groupTotals={product.groupTotals}
         activeLocations={p.activeLocations}

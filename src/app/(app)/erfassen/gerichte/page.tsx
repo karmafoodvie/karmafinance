@@ -1,5 +1,5 @@
 import { subMonths, endOfMonth, format } from "date-fns";
-import { ACTIVE_LOCATIONS, LOCATIONS, periodStart } from "@/lib/constants";
+import { ACTIVE_LOCATIONS, periodStart } from "@/lib/constants";
 import { buildDishData, MENU_ERA_START } from "@/lib/dishes";
 import { formatEur, formatNumber } from "@/lib/calculations";
 import { StatTile } from "@/components/ui/StatTile";
@@ -47,18 +47,17 @@ export default async function GerichtePage({
   const wasClamped = clampedFrom !== fromDate;
 
   // Shop-Mehrfachauswahl (gleiche Logik wie Shops-Seite).
-  const allCodes = LOCATIONS.map((l) => l.code);
+  const allCodes = ACTIVE_LOCATIONS.map((l) => l.code);
   const selected = (params.locs ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter((c) => allCodes.includes(c as (typeof allCodes)[number]));
   const activeLocations = selected.length > 0 ? selected : allCodes;
-  const allSelected = activeLocations.length === allCodes.length;
 
   const data = await buildDishData(
     clampedFrom,
     toDate,
-    allSelected ? undefined : activeLocations,
+    activeLocations,
   );
 
   const fromLabel = format(new Date(clampedFrom), "dd.MM.yyyy");

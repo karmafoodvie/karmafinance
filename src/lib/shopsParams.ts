@@ -1,5 +1,5 @@
 import { endOfMonth, format } from "date-fns";
-import { LOCATIONS, periodStart, monthLabel } from "@/lib/constants";
+import { ACTIVE_LOCATIONS, LOCATIONS, periodStart, monthLabel } from "@/lib/constants";
 
 export interface ShopsSearchParams {
   fromYear?: string;
@@ -7,6 +7,8 @@ export interface ShopsSearchParams {
   toYear?: string;
   toMonth?: string;
   locs?: string;
+  /** "1" = archivierte (geschlossene) Shops mit auswerten */
+  archiv?: string;
 }
 
 /**
@@ -28,7 +30,11 @@ export function resolveShopsParams(params: ShopsSearchParams) {
   const fromDate = fromPeriod;
   const toDate = format(endOfMonth(new Date(toPeriod)), "yyyy-MM-dd");
 
-  const allCodes = LOCATIONS.map((l) => l.code);
+  // Geschlossene Shops (z.B. Neustiftgasse) sind archiviert: sie stehen nur
+  // zur Auswahl und in den Zahlen, wenn "Archiv" eingeschaltet ist.
+  const includeArchive = params.archiv === "1";
+  const poolLocations = includeArchive ? LOCATIONS : ACTIVE_LOCATIONS;
+  const allCodes = poolLocations.map((l) => l.code);
   const selected = (params.locs ?? "")
     .split(",")
     .map((s) => s.trim())
@@ -51,7 +57,10 @@ export function resolveShopsParams(params: ShopsSearchParams) {
     toDate,
     activeLocations,
     allSelected,
-    locationFilter: allSelected ? undefined : activeLocations,
+    includeArchive,
+    poolLocations,
+    // ohne Archiv immer explizit filtern, sonst kämen archivierte Shops über "alle" doch mit
+    locationFilter: allSelected && includeArchive ? undefined : activeLocations,
     rangeLabel,
   };
 }
